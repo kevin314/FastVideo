@@ -11,9 +11,10 @@ from einops import rearrange
 from fastvideo.v1.pipelines.stages.base import PipelineStage
 from fastvideo.v1.pipelines.pipeline_batch_info import ForwardBatch
 from fastvideo.v1.inference_args import InferenceArgs
-from fastvideo.v1.models.hunyuan.constants import PRECISION_TO_TYPE
-from fastvideo.v1.utils.parallel_states import nccl_info, get_sequence_parallel_state
-from fastvideo.v1.utils.communications import all_gather
+from fastvideo.v1.utils import PRECISION_TO_TYPE
+# TODO(will-refactor): change this to fastvideo.distributed
+from fastvideo.utils.parallel_states import nccl_info, get_sequence_parallel_state
+from fastvideo.utils.communications import all_gather
 from fastvideo.v1.logger import init_logger
 
 logger = init_logger(__name__)

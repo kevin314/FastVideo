@@ -156,7 +156,7 @@ class VAELoader(ComponentLoader):
     def load(self, model_path: str, architecture: str, inference_args: InferenceArgs):
         """Load the VAE based on the model path, architecture, and inference args."""
         # TODO(will): move this to a constants file
-        from fastvideo.v1.pipelines.hunyuan.constants import PRECISION_TO_TYPE
+        from fastvideo.v1.utils import PRECISION_TO_TYPE
 
         config = get_diffusers_config(model=model_path)
         

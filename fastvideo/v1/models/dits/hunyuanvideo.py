@@ -7,8 +7,8 @@ from fastvideo.v1.layers.layernorm import LayerNormScaleShift, ScaleResidual, Sc
 from fastvideo.v1.layers.visual_embedding import PatchEmbed, TimestepEmbedder, ModulateProjection, unpatchify
 from fastvideo.v1.layers.rotary_embedding import _apply_rotary_emb, get_rotary_pos_embed
 from fastvideo.v1.distributed.parallel_state import get_sequence_model_parallel_world_size, get_sequence_model_parallel_rank
-# TODO: RMSNorm ....
-from fastvideo.v1.models.hunyuan.modules.norm_layers import RMSNorm 
+# TODO(will-PY-refactor): RMSNorm ....
+from fastvideo.v1.v0_reference_src.models.hunyuan.modules.norm_layers import RMSNorm 
 from fastvideo.v1.layers.mlp import MLP
 from fastvideo.v1.models.dits.base import BaseDiT
 

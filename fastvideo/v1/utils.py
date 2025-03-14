@@ -3,6 +3,7 @@ import fastvideo.v1.envs as envs
 import inspect
 from fastvideo.v1.logger import init_logger
 import argparse
+import math
 import sys
 from typing import List, Dict, Union, Type, Any, TypeVar
 import yaml
@@ -12,6 +13,14 @@ logger = init_logger(__name__)
 
 
 T = TypeVar("T")
+
+# TODO(will): used to convert inference_args.precision to torch.dtype. Find a
+# cleaner way to do this.
+PRECISION_TO_TYPE = {
+    "fp32": torch.float32,
+    "fp16": torch.float16,
+    "bf16": torch.bfloat16,
+}
 
 
 def find_nccl_library() -> str:
@@ -288,3 +297,16 @@ def warn_for_unimplemented_methods(cls: Type[T]) -> Type[T]:
 
     type.__setattr__(cls, '__init__', wrapped_init)
     return cls
+
+
+def align_to(value, alignment):
+    """align height, width according to alignment
+
+    Args:
+        value (int): height or width
+        alignment (int): target alignment factor
+
+    Returns:
+        int: the aligned value
+    """
+    return int(math.ceil(value / alignment) * alignment)

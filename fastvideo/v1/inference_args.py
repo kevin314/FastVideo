@@ -18,7 +18,7 @@
 import argparse
 import dataclasses
 from fastvideo.v1.logger import init_logger
-from fastvideo.v1.utils.utils import FlexibleArgumentParser
+from fastvideo.v1.utils import FlexibleArgumentParser
 from typing import List, Optional
 
 

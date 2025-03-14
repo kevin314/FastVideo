@@ -11,7 +11,7 @@ from einops import rearrange
 # Fix the import path
 from fastvideo.v1.inference_engine import InferenceEngine
 from fastvideo.v1.inference_args import InferenceArgs
-from fastvideo.v1.utils.utils import FlexibleArgumentParser
+from fastvideo.v1.utils import FlexibleArgumentParser
 from fastvideo.v1.distributed import init_distributed_environment, initialize_model_parallel
 from fastvideo.v1.logger import init_logger
 logger = init_logger(__name__)
