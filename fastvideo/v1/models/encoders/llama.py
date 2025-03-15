@@ -131,9 +131,6 @@ class LlamaAttention(nn.Module):
         self.scaling = self.head_dim**-0.5
         self.rope_theta = rope_theta
         self.max_position_embeddings = max_position_embeddings
-        print("head_dim", self.head_dim)
-        print("total_num_heads", self.total_num_heads)
-        print("total_num_kv_heads", self.total_num_kv_heads)
 
         self.qkv_proj = QKVParallelLinear(
             hidden_size=hidden_size,
@@ -179,9 +176,20 @@ class LlamaAttention(nn.Module):
     ) -> torch.Tensor:
         qkv, _ = self.qkv_proj(hidden_states)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
-        q, k = self.rotary_emb(positions, q, k)
+        # print(f"query_states sum before apply_rotary_pos_emb: {q.float().sum()}")
+        # q, k = self.rotary_emb(positions, q, k)
+        # attn_output = self.attn(q, k, v)
+        # use flash_attn_func
+        from flash_attn import flash_attn_func
+        # reshape q, k, v to (batch_size, seq_len, num_heads, head_dim)
+        batch_size = q.shape[0]
+        seq_len = q.shape[1]
+        q = q.reshape(batch_size, seq_len, self.num_heads, self.head_dim)
+        k = k.reshape(batch_size, seq_len, self.num_kv_heads, self.head_dim)
+        v = v.reshape(batch_size, seq_len, self.num_kv_heads, self.head_dim)
+        attn_output = flash_attn_func(q, k, v, softmax_scale=self.scaling, causal=True)
+        attn_output = attn_output.reshape(batch_size, seq_len, self.total_num_heads * self.head_dim)
 
-        attn_output = self.attn(q, k, v)
         output, _ = self.o_proj(attn_output)
         return output
 
@@ -253,8 +261,10 @@ class LlamaDecoderLayer(nn.Module):
         else:
             hidden_states, residual = self.input_layernorm(
                 hidden_states, residual)
+
         hidden_states = self.self_attn(positions=positions,
                                        hidden_states=hidden_states)
+        
 
         # Fully Connected
         hidden_states, residual = self.post_attention_layernorm(
@@ -317,7 +327,6 @@ class LlamaModel(nn.Module):
         else:
             hidden_states = self.get_input_embeddings(input_ids)
         residual = None
-        print("after embed hidden_states", hidden_states.shape)
 
         if positions is None:
             positions = torch.arange(

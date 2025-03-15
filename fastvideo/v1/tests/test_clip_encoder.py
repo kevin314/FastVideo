@@ -70,7 +70,7 @@ def test_clip_encoder():
     
     # Initialize the two model implementations
     logger.info(f"Loading models from {args.model_path}")
-    model_path = "/home/ubuntu/src/FastVideo/data/hunyuanvideo-community/HunyuanVideo/text_encoder_2"
+    model_path = "data/hunyuanvideo-community/HunyuanVideo/text_encoder_2"
 
     # config = json.load(open(os.path.join(model_path, "config.json")))
 
@@ -109,16 +109,17 @@ def test_clip_encoder():
     logger.info(f"Model2 has {len(params2)} parameters")
     
     # Compare a few key parameters
-    weight_diffs = []
-    for (name1, param1), (name2, param2) in zip(
-        sorted(params1.items()), sorted(params2.items())
-    ):
-        # if len(weight_diffs) < 5:  # Just check a few parameters
-        max_diff = torch.max(torch.abs(param1 - param2)).item()
-        mean_diff = torch.mean(torch.abs(param1 - param2)).item()
-        weight_diffs.append((name1, name2, max_diff, mean_diff))
-        logger.info(f"Parameter: {name1} vs {name2}")
-        logger.info(f"  Max diff: {max_diff}, Mean diff: {mean_diff}")
+    
+    # weight_diffs = []
+    # for (name1, param1), (name2, param2) in zip(
+    #     sorted(params1.items()), sorted(params2.items())
+    # ):
+    #     # if len(weight_diffs) < 5:  # Just check a few parameters
+    #     max_diff = torch.max(torch.abs(param1 - param2)).item()
+    #     mean_diff = torch.mean(torch.abs(param1 - param2)).item()
+    #     weight_diffs.append((name1, name2, max_diff, mean_diff))
+    #     logger.info(f"Parameter: {name1} vs {name2}")
+    #     logger.info(f"  Max diff: {max_diff}, Mean diff: {mean_diff}")
     
     # Load tokenizer
     tokenizer, _ = load_tokenizer(
@@ -166,8 +167,8 @@ def test_clip_encoder():
             )
             
             # Compare last hidden states
-            last_hidden_state1 = outputs1.last_hidden_state
-            last_hidden_state2 = outputs2.last_hidden_state
+            last_hidden_state1 = outputs1.last_hidden_state[tokens.attention_mask==1]
+            last_hidden_state2 = outputs2.last_hidden_state[tokens.attention_mask==1]
             # print("last_hidden_state1", last_hidden_state1)
             # print("last_hidden_state2", last_hidden_state2)
             

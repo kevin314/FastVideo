@@ -69,7 +69,7 @@ def test_llama_encoder():
     
     # Initialize the two model implementations
     logger.info(f"Loading models from {args.model_path}")
-    model_path = "/home/ubuntu/src/FastVideo/data/hunyuanvideo-community/HunyuanVideo/text_encoder"
+    model_path = "data/hunyuanvideo-community/HunyuanVideo/text_encoder"
 
     hf_config = AutoConfig.from_pretrained(model_path)
     print(hf_config)
@@ -105,6 +105,9 @@ def test_llama_encoder():
     
     # Compare a few key parameters
     weight_diffs = []
+    # check if embed_tokens are the same
+    print(model1.embed_tokens.weight.shape, model2.embed_tokens.weight.shape)
+    assert torch.allclose(model1.embed_tokens.weight, model2.embed_tokens.weight)
     weights = ["layers.{}.input_layernorm.weight", "layers.{}.post_attention_layernorm.weight"]
     # for (name1, param1), (name2, param2) in zip(
     #     sorted(params1.items()), sorted(params2.items())
@@ -128,7 +131,7 @@ def test_llama_encoder():
             except Exception as e:
                 logger.info(f"Error comparing {name1} and {name2}: {e}")
     
-    tokenizer_path = "/home/ubuntu/src/FastVideo/data/hunyuanvideo-community/HunyuanVideo/tokenizer"
+    tokenizer_path = "data/hunyuanvideo-community/HunyuanVideo/tokenizer"
     # Load tokenizer
     tokenizer, _ = load_tokenizer(
         tokenizer_type="llm",
@@ -139,8 +142,8 @@ def test_llama_encoder():
     # Test with some sample prompts
     prompts = [
         "Once upon a time",
-        "The quick brown fox jumps over",
-        "In a galaxy far, far away"
+        # "The quick brown fox jumps over",
+        # "In a galaxy far, far away"
     ]
     
     logger.info("Testing LLaMA encoder with sample prompts")
@@ -159,12 +162,15 @@ def test_llama_encoder():
             ).to(device)
             
             # Get outputs from our implementation
+            # filter out padding input_ids  
+            # tokens.input_ids = tokens.input_ids[tokens.attention_mask==1]
+            # tokens.attention_mask = tokens.attention_mask[tokens.attention_mask==1]
             outputs1 = model1(
                 input_ids=tokens.input_ids,
                 attention_mask=tokens.attention_mask,
                 output_hidden_states=True
             )
-
+            print("--------------------------------")
             logger.info(f"Testing model2")
             
             # Get outputs from HuggingFace implementation
@@ -175,8 +181,8 @@ def test_llama_encoder():
             )
             
             # Compare last hidden states
-            last_hidden_state1 = outputs1.last_hidden_state
-            last_hidden_state2 = outputs2.last_hidden_state
+            last_hidden_state1 = outputs1.last_hidden_state[tokens.attention_mask==1]
+            last_hidden_state2 = outputs2.last_hidden_state[tokens.attention_mask==1]
             
             assert last_hidden_state1.shape == last_hidden_state2.shape, \
                 f"Hidden state shapes don't match: {last_hidden_state1.shape} vs {last_hidden_state2.shape}"

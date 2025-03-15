@@ -195,8 +195,14 @@ class CLIPAttention(nn.Module):
 
         qkv_states, _ = self.qkv_proj(hidden_states)
         query_states, key_states, value_states = qkv_states.chunk(3, dim=-1)
-        out = self.attn(query_states, key_states, value_states)
-        attn_output, _ = self.out_proj(out)
+        # use flash_attn_func
+        from flash_attn import flash_attn_func
+        query_states = query_states.reshape(query_states.shape[0], query_states.shape[1], self.num_heads, self.head_dim)
+        key_states = key_states.reshape(key_states.shape[0], key_states.shape[1], self.num_heads, self.head_dim)
+        value_states = value_states.reshape(value_states.shape[0], value_states.shape[1], self.num_heads, self.head_dim)
+        attn_output = flash_attn_func(query_states, key_states, value_states,softmax_scale=self.scale, causal=True)
+        attn_output = attn_output.reshape(attn_output.shape[0], attn_output.shape[1], self.embed_dim)
+        attn_output, _ = self.out_proj(attn_output)
 
         return attn_output, None
 

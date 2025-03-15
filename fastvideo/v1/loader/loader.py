@@ -305,7 +305,7 @@ class DefaultModelLoader(BaseModelLoader):
         logger.info(f"Loading model on device: {inference_args.device_str}")
         target_device = torch.device(inference_args.device_str)
         # TODO(will): add support for other dtypes
-        with set_default_torch_dtype(torch.bfloat16):
+        with set_default_torch_dtype(torch.float16):
             with target_device:
                 model = _initialize_model(model_path, model_config)
                 

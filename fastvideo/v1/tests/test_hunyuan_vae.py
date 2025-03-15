@@ -73,7 +73,7 @@ def test_hunyuan_vae():
     device = torch.device("cuda:0")
     print
     # Initialize the two model implementations
-    path = "/home/ubuntu/src/FastVideo/data/hunyuanvideo-community/HunyuanVideo/vae"
+    path = "data/hunyuanvideo-community/HunyuanVideo/vae"
     config_path = os.path.join(path, "config.json")
     config = json.load(open(config_path))
     config.pop("_class_name")
