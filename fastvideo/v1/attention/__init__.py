@@ -1,3 +1,3 @@
-from .flash_attn import (DistributedAttention, TextEncoderFlashAttention, LocalAttention)
+from .flash_attn import (DistributedAttention, LocalAttention)
 
-__all__ = ["DistributedAttention", "TextEncoderFlashAttention", "LocalAttention"]
+__all__ = ["DistributedAttention", "LocalAttention"]

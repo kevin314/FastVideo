@@ -1,13 +1,14 @@
 from fastvideo.v1.models.encoders.clip import CLIPTextModel
-from fastvideo.v1.models.hunyuan.text_encoder import TextEncoder
+from fastvideo.v1.v0_reference_src.models.hunyuan.text_encoder import TextEncoder, load_text_encoder, load_tokenizer
 import os
 import torch
 import torch.nn as nn
 import argparse
 import numpy as np
-from transformers import CLIPTextModel as HFCLIPTextModel
 from fastvideo.v1.logger import init_logger
-from fastvideo.v1.models.hunyuan.text_encoder import load_text_encoder, load_tokenizer
+from transformers import AutoConfig
+from fastvideo.v1.distributed import init_distributed_environment, initialize_model_parallel
+# from fastvideo.v1.models.hunyuan.text_encoder import load_text_encoder, load_tokenizer
 
 logger = init_logger(__name__)
 
@@ -52,11 +53,13 @@ def setup_args():
     parser = argparse.ArgumentParser(description='CLIP Text Encoder Test')
     parser.add_argument('--model-path', type=str, default="openai/clip-vit-large-patch14",
                         help='Path to the CLIP model')
-    parser.add_argument('--precision', type=str, default="bfloat16",
+    parser.add_argument('--precision', type=str, default="float16",
                         help='Precision to use for the model (float32, float16, bfloat16)')
     return parser.parse_args()
 
 def test_clip_encoder():
+    init_distributed_environment(world_size=1, rank=0, distributed_init_method="env://", local_rank=0, backend="nccl")
+    initialize_model_parallel(tensor_model_parallel_size=1, sequence_model_parallel_size=1, backend="nccl")
     args = setup_args()
     
     # Set fixed random seed for reproducibility
@@ -67,24 +70,55 @@ def test_clip_encoder():
     
     # Initialize the two model implementations
     logger.info(f"Loading models from {args.model_path}")
+    model_path = "/home/ubuntu/src/FastVideo/data/hunyuanvideo-community/HunyuanVideo/text_encoder_2"
+
+    # config = json.load(open(os.path.join(model_path, "config.json")))
+
+    hf_config = AutoConfig.from_pretrained(model_path)
+    print(hf_config)
+    print(hf_config.use_return_dict)
     
     # Load our implementation using the loader from text_encoder/__init__.py
     model1, _ = load_text_encoder(
         text_encoder_type="clipL",
-        text_encoder_precision=args.precision,
-        text_encoder_path=args.model_path,
+        text_encoder_precision='fp16',
+        text_encoder_path=model_path,
         logger=logger,
         device=device
     )
+
+    from fastvideo.v1.models.loader import TextEncoderLoader
+    from fastvideo.v1.loader.loader import DefaultModelLoader
+    loader = DefaultModelLoader()
+    args.device_str = "cuda:0"
+    model2 = loader.load_model(model_path, hf_config, args)
     
     # Load the HuggingFace implementation directly
-    model2 = HFCLIPTextModel.from_pretrained(args.model_path)
-    if args.precision == "bfloat16":
-        model2 = model2.to(torch.bfloat16)
-    elif args.precision == "float16":
-        model2 = model2.to(torch.float16)
+    # model2 = CLIPTextModel(hf_config)
+    model2 = model2.to(torch.float16)
     model2 = model2.to(device)
     model2.eval()
+    
+    # Sanity check weights between the two models
+    logger.info("Comparing model weights for sanity check...")
+    params1 = dict(model1.named_parameters())
+    params2 = dict(model2.named_parameters())
+    
+    # Check number of parameters
+    logger.info(f"Model1 has {len(params1)} parameters")
+    logger.info(f"Model2 has {len(params2)} parameters")
+    
+    # Compare a few key parameters
+    weight_diffs = []
+    for (name1, param1), (name2, param2) in zip(
+        sorted(params1.items()), sorted(params2.items())
+    ):
+        # if len(weight_diffs) < 5:  # Just check a few parameters
+        max_diff = torch.max(torch.abs(param1 - param2)).item()
+        mean_diff = torch.mean(torch.abs(param1 - param2)).item()
+        weight_diffs.append((name1, name2, max_diff, mean_diff))
+        logger.info(f"Parameter: {name1} vs {name2}")
+        logger.info(f"  Max diff: {max_diff}, Mean diff: {mean_diff}")
     
     # Load tokenizer
     tokenizer, _ = load_tokenizer(
@@ -121,17 +155,21 @@ def test_clip_encoder():
                 attention_mask=tokens.attention_mask,
                 output_hidden_states=True
             )
+
+            logger.info(f"Testing model2")
             
             # Get embeddings from HuggingFace implementation
             outputs2 = model2(
                 input_ids=tokens.input_ids,
-                attention_mask=tokens.attention_mask,
+                # attention_mask=tokens.attention_mask,
                 output_hidden_states=True
             )
             
             # Compare last hidden states
             last_hidden_state1 = outputs1.last_hidden_state
             last_hidden_state2 = outputs2.last_hidden_state
+            # print("last_hidden_state1", last_hidden_state1)
+            # print("last_hidden_state2", last_hidden_state2)
             
             assert last_hidden_state1.shape == last_hidden_state2.shape, \
                 f"Hidden state shapes don't match: {last_hidden_state1.shape} vs {last_hidden_state2.shape}"

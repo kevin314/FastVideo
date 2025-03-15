@@ -87,14 +87,12 @@ logger = init_logger(__name__)
 def _initialize_model(
     model_path: str,
     model_config,
-    inference_args: InferenceArgs,
 ) -> nn.Module:
     """Initialize a model with the given configurations.
     
     Args:
         model_name: The name of the model architecture
         model_path: Path to the model directory
-        inference_args: Inference arguments
         component_name: Optional component name (e.g., "text_encoder", "vae")
             If provided, will load the config from the component subdirectory
     
@@ -115,40 +113,8 @@ def _initialize_model(
     return model_cls(model_config)
 
     
-    # Store the config for later use
-    if not hasattr(inference_args, 'hf_configs'):
-        inference_args.hf_configs = {}
-    
-    if component_name:
-        inference_args.hf_configs[component_name] = hf_config
-    else:
-        inference_args.hf_config = hf_config
-    
-    # Initialize the model based on the model_name
-    if model_name == "CLIPVisionModel":
-        from fastvideo.v1.models.encoders.clip import CLIPVisionModel
-        from transformers import CLIPVisionConfig
-        
-        # If the config is not a CLIPVisionConfig, convert it
-        if not isinstance(hf_config, CLIPVisionConfig):
-            # This might need adjustment based on your specific requirements
-            clip_config = CLIPVisionConfig.from_dict(hf_config.to_dict())
-        else:
-            clip_config = hf_config
-        
-        # Initialize the model with the config
-        model = CLIPVisionModel(config=clip_config)
-    else:
-        # Add more model types as needed
-        raise ValueError(f"Unsupported model type: {model_name}")
-    
-    return model
-
 class BaseModelLoader(ABC):
     """Base class for model loaders."""
-
-    def __init__(self, inference_args: InferenceArgs):
-        self.inference_args = inference_args
 
     @abstractmethod
     def download_model(self, inference_args: InferenceArgs) -> None:
@@ -185,9 +151,6 @@ class DefaultModelLoader(BaseModelLoader):
 
     counter_before_loading_weights: float = 0.0
     counter_after_loading_weights: float = 0.0
-
-    def __init__(self, inference_args: InferenceArgs):
-        super().__init__(inference_args)
 
     def _prepare_weights(
         self,
@@ -344,7 +307,7 @@ class DefaultModelLoader(BaseModelLoader):
         # TODO(will): add support for other dtypes
         with set_default_torch_dtype(torch.bfloat16):
             with target_device:
-                model = _initialize_model(model_path, model_config, inference_args)
+                model = _initialize_model(model_path, model_config)
                 
             weights_to_load = {name for name, _ in model.named_parameters()}
             model_config.model = model_path
@@ -357,12 +320,12 @@ class DefaultModelLoader(BaseModelLoader):
                 self.counter_before_loading_weights)
             # We only enable strict check for non-quantized models
             # that have loaded weights tracking currently.
-            if loaded_weights is not None:
-                weights_not_loaded = weights_to_load - loaded_weights
-                if weights_not_loaded:
-                    raise ValueError(
-                        "Following weights were not initialized from "
-                        f"checkpoint: {weights_not_loaded}")
+            # if loaded_weights is not None:
+            weights_not_loaded = weights_to_load - loaded_weights
+            if weights_not_loaded:
+                raise ValueError(
+                    "Following weights were not initialized from "
+                    f"checkpoint: {weights_not_loaded}")
 
         # TODO(will): add support for training/finetune
         return model.eval()
@@ -371,9 +334,9 @@ class DefaultModelLoader(BaseModelLoader):
 
 
 
-def get_model_loader(inference_args: InferenceArgs) -> BaseModelLoader:
+def get_model_loader() -> BaseModelLoader:
     """Get a model loader based on the load format."""
     # if isinstance(load_config.load_format, type):
     #     return load_config.load_format(load_config)
 
-    return DefaultModelLoader(inference_args)
+    return DefaultModelLoader()

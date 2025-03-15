@@ -203,7 +203,7 @@ class TextEncoder(nn.Module):
         hidden_state_skip_layer = use_default(hidden_state_skip_layer, self.hidden_state_skip_layer)
         do_sample = use_default(do_sample, not self.reproduce)
         attention_mask = (batch_encoding["attention_mask"].to(device) if use_attention_mask else None)
-        print(f"batch_encoding: {batch_encoding}")
+        # print(f"batch_encoding: {batch_encoding}")
         # logger.info(f"attention_mask: {attention_mask}")
         outputs = self.model(
             input_ids=batch_encoding["input_ids"].to(device),

@@ -29,7 +29,7 @@ from torch import nn
 from transformers import LlamaConfig
 from transformers.modeling_outputs import BaseModelOutputWithPast
 
-from fastvideo.v1.attention import TextEncoderFlashAttention
+from vllm.attention.layer import MultiHeadAttention
 
 from fastvideo.v1.distributed import get_tensor_model_parallel_world_size
 from fastvideo.v1.layers.activation import SiluAndMul
@@ -65,6 +65,7 @@ class LlamaMLP(nn.Module):
         self.gate_up_proj = MergedColumnParallelLinear(
             input_size=hidden_size,
             output_sizes=[intermediate_size] * 2,
+            # output_size=intermediate_size,
             bias=bias,
             quant_config=quant_config,
             prefix=f"{prefix}.gate_up_proj",
@@ -130,6 +131,9 @@ class LlamaAttention(nn.Module):
         self.scaling = self.head_dim**-0.5
         self.rope_theta = rope_theta
         self.max_position_embeddings = max_position_embeddings
+        print("head_dim", self.head_dim)
+        print("total_num_heads", self.total_num_heads)
+        print("total_num_kv_heads", self.total_num_kv_heads)
 
         self.qkv_proj = QKVParallelLinear(
             hidden_size=hidden_size,
@@ -163,26 +167,10 @@ class LlamaAttention(nn.Module):
             is_neox_style=is_neox_style,
         )
 
-        if hasattr(config, "interleaved_sliding_window"):
-            interleaved_sliding_window = config.interleaved_sliding_window
-            if isinstance(interleaved_sliding_window, int):
-                sliding_window = interleaved_sliding_window
-            elif isinstance(interleaved_sliding_window, list):
-                sw_idx = layer_idx % len(interleaved_sliding_window)
-                sliding_window = interleaved_sliding_window[sw_idx]
-            else:
-                raise ValueError(
-                    f"{type(interleaved_sliding_window)} is not supported.")
-        else:
-            sliding_window = None
-
-        self.attn = TextEncoderFlashAttention(
-            self.scaling,
-            # num_kv_heads=self.num_kv_heads,
-            # quant_config=quant_config,
-            # per_layer_sliding_window=sliding_window,
-            # prefix=f"{prefix}.attn",
-        )
+        self.attn = MultiHeadAttention(self.num_heads,
+                                       self.head_dim,
+                                       self.scaling,
+                                       self.num_kv_heads)
 
     def forward(
         self,
@@ -192,6 +180,7 @@ class LlamaAttention(nn.Module):
         qkv, _ = self.qkv_proj(hidden_states)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
+
         attn_output = self.attn(q, k, v)
         output, _ = self.o_proj(attn_output)
         return output
@@ -315,7 +304,8 @@ class LlamaModel(nn.Module):
     def forward(
         self,
         input_ids: Optional[torch.Tensor],
-        positions: torch.Tensor,
+        positions: Optional[torch.Tensor] = None,
+        attention_mask: Optional[torch.Tensor] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
         output_hidden_states: Optional[bool] = None,
     ) -> torch.Tensor:
@@ -327,6 +317,12 @@ class LlamaModel(nn.Module):
         else:
             hidden_states = self.get_input_embeddings(input_ids)
         residual = None
+        print("after embed hidden_states", hidden_states.shape)
+
+        if positions is None:
+            positions = torch.arange(
+                0, hidden_states.shape[1], device=hidden_states.device
+            ).unsqueeze(0)
 
         all_hidden_states = () if output_hidden_states else None
         for layer in self.layers:

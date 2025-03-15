@@ -7,8 +7,10 @@ import torch
 import torch.nn as nn
 from transformers import CLIPVisionConfig, CLIPTextConfig
 from transformers.modeling_outputs import BaseModelOutputWithPooling
+# from transformers.modeling_attn_mask_utils import _create_4d_causal_attention_mask, _prepare_4d_attention_mask
 
 from vllm.attention.layer import MultiHeadAttention
+# from fastvideo.v1.attention.flash_attn import LocalAttention
 from fastvideo.v1.distributed import divide, get_tensor_model_parallel_world_size
 from fastvideo.v1.layers.activation import get_act_fn
 from fastvideo.v1.layers.linear import (ColumnParallelLinear,
@@ -20,6 +22,10 @@ from fastvideo.v1.loader.weight_utils import default_weight_loader
 from vllm.model_executor.models.interfaces import SupportsQuant
 
 from .vision import VisionEncoderInfo, resolve_visual_encoder_outputs
+
+from fastvideo.v1.logger import init_logger
+
+logger = init_logger(__name__)
 
 class QuantizationConfig:
     pass
@@ -229,7 +235,7 @@ class CLIPEncoderLayer(nn.Module):
 
     def __init__(
         self,
-        config: CLIPVisionConfig,
+        config: CLIPTextConfig,
         quant_config: Optional[QuantizationConfig] = None,
         prefix: str = "",
     ) -> None:
@@ -368,26 +374,26 @@ class CLIPTextTransformer(nn.Module):
 
         # CLIP's text model uses causal mask, prepare it here.
         # https://github.com/openai/CLIP/blob/cfcffb90e69f37bf2ff1e988237a0fbe41f33c04/clip/model.py#L324
-        causal_attention_mask = _create_4d_causal_attention_mask(
-            input_shape, hidden_states.dtype, device=hidden_states.device
-        )
+        # causal_attention_mask = _create_4d_causal_attention_mask(
+        #     input_shape, hidden_states.dtype, device=hidden_states.device
+        # )
 
-        # expand attention_mask
-        if attention_mask is not None and not self._use_flash_attention_2:
-            raise NotImplementedError("attention_mask is not supported for CLIPTextTransformer")
-            # [bsz, seq_len] -> [bsz, 1, tgt_seq_len, src_seq_len]
-            attention_mask = _prepare_4d_attention_mask(attention_mask, hidden_states.dtype)
+        # # expand attention_mask
+        # if attention_mask is not None and not self._use_flash_attention_2:
+        #     raise NotImplementedError("attention_mask is not supported for CLIPTextTransformer")
+        #     # [bsz, seq_len] -> [bsz, 1, tgt_seq_len, src_seq_len]
+        #     attention_mask = _prepare_4d_attention_mask(attention_mask, hidden_states.dtype)
 
         encoder_outputs = self.encoder(
             inputs_embeds=hidden_states,
-            attention_mask=attention_mask,
-            causal_attention_mask=causal_attention_mask,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
+            # attention_mask=attention_mask,
+            # causal_attention_mask=causal_attention_mask,
+            # output_attentions=output_attentions,
+            return_all_hidden_states=output_hidden_states,
+            # return_dict=return_dict,
         )
 
-        last_hidden_state = encoder_outputs[0]
+        last_hidden_state = encoder_outputs[-1]
         last_hidden_state = self.final_layer_norm(last_hidden_state)
 
         if self.eos_token_id == 2:
@@ -415,11 +421,12 @@ class CLIPTextTransformer(nn.Module):
         if not return_dict:
             return (last_hidden_state, pooled_output) + encoder_outputs[1:]
 
+        # return last_hidden_state 
         return BaseModelOutputWithPooling(
             last_hidden_state=last_hidden_state,
             pooler_output=pooled_output,
-            hidden_states=encoder_outputs.hidden_states,
-            attentions=encoder_outputs.attentions,
+            hidden_states=encoder_outputs,
+            # attentions=encoder_outputs.attentions,
         )
 
 
@@ -456,7 +463,7 @@ class CLIPTextModel(nn.Module):
             position_ids=position_ids,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
+            return_dict=None,
         )
 
     def load_weights(self, weights: Iterable[Tuple[str,

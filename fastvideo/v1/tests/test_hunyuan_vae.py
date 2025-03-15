@@ -1,4 +1,4 @@
-from fastvideo.v1.models.vaes import AutoencoderKLHunyuanVideo as MyHunyuanVAE 
+from fastvideo.v1.models.vaes.hunyuanvae import AutoencoderKLHunyuanVideo as MyHunyuanVAE 
 from diffusers import AutoencoderKLHunyuanVideo as DiffusersHunyuanVAE 
 
 import os
@@ -73,7 +73,7 @@ def test_hunyuan_vae():
     device = torch.device("cuda:0")
     print
     # Initialize the two model implementations
-    path = "/mbz/users/hao.zhang/peiyuan/FastVideo/data/hunyuanvideo_community/vae"
+    path = "/home/ubuntu/src/FastVideo/data/hunyuanvideo-community/HunyuanVideo/vae"
     config_path = os.path.join(path, "config.json")
     config = json.load(open(config_path))
     config.pop("_class_name")

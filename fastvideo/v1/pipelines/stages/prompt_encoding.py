@@ -87,13 +87,16 @@ class PromptEncodingStage(PipelineStage):
                 attention_mask = attention_mask.view(bs_embed * num_videos_per_prompt, seq_len)
 
         if text_encoder is not None:
-            prompt_embeds_dtype = text_encoder.dtype
+            # TODO(will-refactor): use text_encoder.dtype
+            prompt_embeds_dtype = torch.float16
         elif self.transformer is not None:
             prompt_embeds_dtype = self.transformer.dtype
         else:
             prompt_embeds_dtype = prompt_embeds.dtype
 
         prompt_embeds = prompt_embeds.to(dtype=prompt_embeds_dtype, device=device)
+        # print("prompt_embeds", type(prompt_embeds))
+        # logger.info(f"prompt_embeds shape: {prompt_embeds.shape}")
 
         if prompt_embeds.ndim == 2:
             bs_embed, _ = prompt_embeds.shape

@@ -95,7 +95,7 @@ class TextEncoderLoader(ComponentLoader):
             inference_args=inference_args,
         )
         logger.info(f"HF Model config: {model_config}")
-        model_loader = get_model_loader(inference_args)
+        model_loader = get_model_loader()
         model = model_loader.load_model(model_path, model_config, inference_args)
         return model
     
