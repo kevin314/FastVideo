@@ -97,6 +97,9 @@ class PromptEncodingStage(PipelineStage):
         prompt_embeds = prompt_embeds.to(dtype=prompt_embeds_dtype, device=device)
         # print("prompt_embeds", type(prompt_embeds))
         # logger.info(f"prompt_embeds shape: {prompt_embeds.shape}")
+        if prompt_embeds.ndim == 1:
+            prompt_embeds = prompt_embeds.unsqueeze(0)
+            # attention_mask = attention_mask.unsqueeze(0)
 
         if prompt_embeds.ndim == 2:
             bs_embed, _ = prompt_embeds.shape

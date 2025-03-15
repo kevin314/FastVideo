@@ -79,7 +79,7 @@ class TextEncoderLoader(ComponentLoader):
 
     def load(self, model_path: str, architecture: str, inference_args: InferenceArgs):
         """Load the text encoders based on the model path, architecture, and inference args."""
-        use_v1 = True
+        use_v1 = False
         if not use_v1:
             return self.load_v0(model_path, architecture, inference_args)
         else:

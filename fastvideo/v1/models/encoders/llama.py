@@ -177,7 +177,7 @@ class LlamaAttention(nn.Module):
         qkv, _ = self.qkv_proj(hidden_states)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         # print(f"query_states sum before apply_rotary_pos_emb: {q.float().sum()}")
-        # q, k = self.rotary_emb(positions, q, k)
+        q, k = self.rotary_emb(positions, q, k)
         # attn_output = self.attn(q, k, v)
         # use flash_attn_func
         from flash_attn import flash_attn_func
@@ -187,8 +187,13 @@ class LlamaAttention(nn.Module):
         q = q.reshape(batch_size, seq_len, self.num_heads, self.head_dim)
         k = k.reshape(batch_size, seq_len, self.num_kv_heads, self.head_dim)
         v = v.reshape(batch_size, seq_len, self.num_kv_heads, self.head_dim)
+        # import pdb; pdb.set_trace()
         attn_output = flash_attn_func(q, k, v, softmax_scale=self.scaling, causal=True)
-        attn_output = attn_output.reshape(batch_size, seq_len, self.total_num_heads * self.head_dim)
+        print(f"shape of attn_output: {attn_output.shape}")
+        print(f"num_kv_heads: {self.num_kv_heads}")
+        print(f"num_heads: {self.num_heads}")
+        print(f"head_dim: {self.head_dim}")
+        attn_output = attn_output.reshape(batch_size, seq_len, self.num_heads * self.head_dim)
 
         output, _ = self.o_proj(attn_output)
         return output

@@ -24,7 +24,7 @@ def get_transformers_model(model_config: PretrainedConfig, model_path: str, infe
     Returns:
         The loaded model
     """
-    model_loader = get_model_loader(inference_args)
+    model_loader = get_model_loader()
     return model_loader.load_model(model_config, model_path, inference_args)
 
 def get_diffusers_model(model_config: Dict[str, Any], model_path: str, inference_args: InferenceArgs) -> nn.Module:

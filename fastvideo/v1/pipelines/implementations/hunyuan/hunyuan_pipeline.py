@@ -25,7 +25,6 @@ from fastvideo.v1.pipelines.stages.prompt_encoding import PromptEncodingStage
 from fastvideo.v1.inference_args import InferenceArgs
 # from fastvideo.v1.pipelines.composed.composed_pipeline_base import DiffusionPipelineOutput
 from fastvideo.v1.pipelines.pipeline_batch_info import ForwardBatch
-from fastvideo.v1.models.text_encoder import TextEncoder
 # TODO(will): move PRECISION_TO_TYPE to better place
 from .constants import PROMPT_TEMPLATE, PRECISION_TO_TYPE
 
@@ -54,10 +53,63 @@ class DiffusionPipelineOutput(BaseOutput):
 class HunyuanVideoPipeline(ComposedPipelineBase):
 
     def initialize_encoders(self, modules: Dict[str, Any], inference_args: InferenceArgs):
+        use_v1 = False
+        if use_v1:
+            self.initialize_encoders_v1(modules, inference_args)
+        else:
+            self.initialize_encoders_v0(modules, inference_args)
+
+    def initialize_encoders_v0(self, modules: Dict[str, Any], inference_args: InferenceArgs):
+        from fastvideo.v1.v0_reference_src.models.hunyuan.text_encoder import TextEncoder
+        # Text encoder
+        if inference_args.prompt_template_video is not None:
+            crop_start = PROMPT_TEMPLATE[inference_args.prompt_template_video].get("crop_start", 0)
+        elif inference_args.prompt_template is not None:
+            crop_start = PROMPT_TEMPLATE[inference_args.prompt_template].get("crop_start", 0)
+        else:
+            crop_start = 0
+        max_length = inference_args.text_len + crop_start
+
+        # prompt_template
+        prompt_template = (PROMPT_TEMPLATE[inference_args.prompt_template] if inference_args.prompt_template is not None else None)
+
+        # prompt_template_video
+        prompt_template_video = (PROMPT_TEMPLATE[inference_args.prompt_template_video]
+                                 if inference_args.prompt_template_video is not None else None)
+
+        text_encoder = TextEncoder(
+            text_encoder_type=inference_args.text_encoder,
+            max_length=max_length,
+            text_encoder_precision=inference_args.text_encoder_precision,
+            tokenizer_type=inference_args.tokenizer,
+            prompt_template=prompt_template,
+            prompt_template_video=prompt_template_video,
+            hidden_state_skip_layer=inference_args.hidden_state_skip_layer,
+            apply_final_norm=inference_args.apply_final_norm,
+            reproduce=inference_args.reproduce,
+            logger=logger,
+            device=self.device if not inference_args.use_cpu_offload else "cpu",
+        )
+        text_encoder_2 = None
+        if inference_args.text_encoder_2 is not None:
+            text_encoder_2 = TextEncoder(
+                text_encoder_type=inference_args.text_encoder_2,
+                max_length=inference_args.text_len_2,
+                text_encoder_precision=inference_args.text_encoder_precision_2,
+                tokenizer_type=inference_args.tokenizer_2,
+                reproduce=inference_args.reproduce,
+                logger=logger,
+                device=self.device if not inference_args.use_cpu_offload else "cpu",
+            )
+        modules["text_encoder"] = text_encoder
+        modules["text_encoder_2"] = text_encoder_2
+
+    def initialize_encoders_v1(self, modules: Dict[str, Any], inference_args: InferenceArgs):
         """
         Initialize the encoders. Will remove the encoders/tokenizers modules from the
         modules. Will add the TextEncoder or ImageEncoder to the modules.
         """
+        from fastvideo.v1.models.text_encoder import TextEncoder
         if inference_args.prompt_template_video is not None:
             crop_start = PROMPT_TEMPLATE[inference_args.prompt_template_video].get("crop_start", 0)
         elif inference_args.prompt_template is not None:
