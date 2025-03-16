@@ -11,7 +11,7 @@ from torch.func import functional_call
 from transformers import PretrainedConfig
 
 from fastvideo.v1.logger import init_logger
-from fastvideo.v1.loader.weight_utils import default_weight_loader
+from fastvideo.v1.models.loader.weight_utils import default_weight_loader
 
 logger = init_logger(__name__)
 

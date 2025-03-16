@@ -12,7 +12,7 @@ from fastvideo.v1.models.dits import HunyuanVideoTransformer3DModel
 import os
 import glob
 import json
-from fastvideo.v1.loader.fsdp_load import load_fsdp_model
+from fastvideo.v1.models.loader.fsdp_load import load_fsdp_model
 from fastvideo.v1.models.hunyuan.text_encoder import TextEncoder
 from fastvideo.v1.models.vaes import AutoencoderKLHunyuanVideo
 from safetensors.torch import load_file as safetensors_load_file
