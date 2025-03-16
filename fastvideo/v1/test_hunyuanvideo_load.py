@@ -59,14 +59,14 @@ def test_hunyuanvideo_distributed():
     logger.info(f"Process rank {rank} initialized with SP rank {sp_rank} in SP world size {sp_world_size}")
     
     # load data/hunyuanvideo_community/transformer/config.json
-    with open("/mbz/users/hao.zhang/peiyuan/FastVideo/data/hunyuanvideo_community/transformer/config.json", "r") as f:
+    with open("data/hunyuanvideo-community/HunyuanVideo/transformer/config.json", "r") as f:
         config = json.load(f)
     # remove   "_class_name": "HunyuanVideoTransformer3DModel",   "_diffusers_version": "0.32.0.dev0",
     # TODO: write normalize config function
     config.pop("_class_name")
     config.pop("_diffusers_version")
     # load data/hunyuanvideo_community/transformer/*.safetensors
-    weight_dir_list = glob.glob("/mbz/users/hao.zhang/peiyuan/FastVideo/data/hunyuanvideo_community/transformer/*.safetensors")
+    weight_dir_list = glob.glob("data/hunyuanvideo-community/HunyuanVideo/transformer/*.safetensors")
     # to str
     weight_dir_list = [str(path) for path in weight_dir_list]
     model1 = load_fsdp_model(
