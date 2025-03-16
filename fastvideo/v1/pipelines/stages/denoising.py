@@ -13,8 +13,8 @@ from fastvideo.v1.pipelines.pipeline_batch_info import ForwardBatch
 from fastvideo.v1.inference_args import InferenceArgs
 from fastvideo.v1.utils import PRECISION_TO_TYPE
 # TODO(will-refactor): change this to fastvideo.distributed
-from fastvideo.utils.parallel_states import nccl_info, get_sequence_parallel_state
-from fastvideo.utils.communications import all_gather
+from fastvideo.v1.distributed import get_sequence_model_parallel_world_size, get_sequence_model_parallel_rank
+from fastvideo.v1.distributed.communication_op import sequence_model_parallel_all_gather
 from fastvideo.v1.logger import init_logger
 
 logger = init_logger(__name__)
@@ -57,8 +57,8 @@ class DenoisingStage(PipelineStage):
         autocast_enabled = (target_dtype != torch.float32) and not inference_args.disable_autocast
 
         # Handle sequence parallelism if enabled
-        world_size, rank = nccl_info.sp_size, nccl_info.rank_within_group
-        sp_group = True
+        world_size, rank = get_sequence_model_parallel_world_size(), get_sequence_model_parallel_rank()
+        sp_group = True if world_size > 1 else False
         if sp_group:
             latents = rearrange(batch.latents, "b t (n s) h w -> b t n s h w", n=world_size).contiguous()
             latents = latents[:, :, rank, :, :, :]
@@ -155,8 +155,8 @@ class DenoisingStage(PipelineStage):
                         progress_bar.update()
 
         # Gather results if using sequence parallelism
-        if get_sequence_parallel_state():
-            latents = all_gather(latents, dim=2)
+        if sp_group:
+            latents = sequence_model_parallel_all_gather(latents, dim=2)
             
         # Update batch with final latents
         batch.latents = latents

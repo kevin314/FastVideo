@@ -14,7 +14,6 @@ from fastvideo.v1.inference_args import InferenceArgs
 from fastvideo.v1.utils import FlexibleArgumentParser
 from fastvideo.v1.distributed import init_distributed_environment, initialize_model_parallel
 from fastvideo.v1.logger import init_logger
-from fastvideo.utils.parallel_states import initialize_sequence_parallel_state
 logger = init_logger(__name__)
 
 def main(inference_args: InferenceArgs):
@@ -37,7 +36,7 @@ def main(inference_args: InferenceArgs):
         sequence_model_parallel_size=inference_args.sp_size,
         tensor_model_parallel_size=inference_args.tp_size,
     )
-    initialize_sequence_parallel_state(world_size)
+    # initialize_sequence_parallel_state(world_size)
     # initialize_sequence_parallel_state(world_size)
     # initialize_distributed()
 

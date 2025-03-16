@@ -9,6 +9,8 @@ export MODEL_BASE=data/FastHunyuan-diffusers
 torchrun --nnodes=1 --nproc_per_node=$num_gpus --master_port 29503 \
     fastvideo/v1/sample/v1_fastvideo_inference.py \
     --use-v1-transformer \
+    --use-v1-vae \
+    --use-v1-text-encoder \
     --sp_size 4 \
     --tp_size 4 \
     --height 720 \

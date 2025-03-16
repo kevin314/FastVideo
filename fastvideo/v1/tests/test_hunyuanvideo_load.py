@@ -16,10 +16,10 @@ from fastvideo.v1.distributed.parallel_state import (
 )
 import json
 from fastvideo.v1.models.dits.hunyuanvideo import HunyuanVideoTransformer3DModel as HunyuanVideoDit 
-from fastvideo.v1.models.hunyuan.modules.models import HUNYUAN_VIDEO_CONFIG
-from fastvideo.v1.models.hunyuan.modules.models import HYVideoDiffusionTransformer
+from fastvideo.models.hunyuan.modules.models import HUNYUAN_VIDEO_CONFIG
+from fastvideo.models.hunyuan.modules.models import HYVideoDiffusionTransformer
 from fastvideo.v1.loader.fsdp_load import load_fsdp_model
-from fastvideo.v1.models.hunyuan.inference import Inference
+from fastvideo.models.hunyuan.inference import Inference
 import glob
 logger = init_logger(__name__)
 
@@ -70,7 +70,7 @@ def test_hunyuanvideo_distributed():
     # to str
     weight_dir_list = [str(path) for path in weight_dir_list]
     model1 = load_fsdp_model(
-        model_name="HunyuanVideoTransformer3DModel",
+        HunyuanVideoDit,
         init_params=config,
         weight_dir_list=weight_dir_list,
         device=torch.device(f"cuda:{local_rank}"),
@@ -92,7 +92,7 @@ def test_hunyuanvideo_distributed():
         **HUNYUAN_VIDEO_CONFIG["HYVideo-T/2-cfgdistill"],
         device=torch.device(f"cuda:{local_rank}"),
         dtype=torch.bfloat16
-    )
+    ).bfloat16()
     # data/hunyuan/hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states.pt
     state_dict = torch.load("/mbz/users/hao.zhang/peiyuan/FastVideo/data/hunyuan/hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states.pt", map_location=lambda storage, loc: storage)["module"]
     model2.load_state_dict(state_dict, strict=True)
@@ -134,6 +134,7 @@ def test_hunyuanvideo_distributed():
     # Disable gradients for inference
     with torch.no_grad():
         # Run inference on model1
+        logger.info(f"Running inference on model1")
         output1 = model1(
             hidden_states=hidden_states,
             encoder_hidden_states=encoder_hidden_states,

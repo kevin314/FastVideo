@@ -46,3 +46,10 @@ def sequence_model_parallel_all_gather(input_: torch.Tensor,
                                      dim: int = -1) -> torch.Tensor:
     """All-gather the input tensor across model parallel group."""
     return get_sp_group().all_gather(input_, dim)
+
+def sequence_model_parallel_all_gather(input_: torch.Tensor,
+                                     dim: int = -1) -> torch.Tensor:
+    """All-gather the input tensor across model parallel group."""
+    return get_sp_group().all_gather(input_, dim)
+
+

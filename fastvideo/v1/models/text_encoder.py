@@ -229,8 +229,7 @@ class TextEncoder(nn.Module):
                 raise ValueError(f"Unsupported data type: {data_type}")
             if crop_start > 0:
                 last_hidden_state = last_hidden_state[:, crop_start:]
-                attention_mask = (attention_mask[:, crop_start:] if use_attention_mask else None)
-
+                attention_mask = (attention_mask[:, crop_start:] if use_attention_mask else None)           
         if output_hidden_states:
             return TextEncoderModelOutput(last_hidden_state, attention_mask, outputs.hidden_states)
         return TextEncoderModelOutput(last_hidden_state, attention_mask)
