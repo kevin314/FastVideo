@@ -87,7 +87,7 @@ def test_clip_encoder():
         device=device
     )
 
-    from fastvideo.v1.models.loader import TextEncoderLoader
+    from fastvideo.v1.models.component_loader import TextEncoderLoader
     from fastvideo.v1.loader.loader import DefaultModelLoader
     loader = DefaultModelLoader()
     args.device_str = "cuda:0"

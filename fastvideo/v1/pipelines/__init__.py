@@ -18,7 +18,7 @@ from fastvideo.v1.models.hf_transformer_utils import get_hf_config, get_diffuser
 from fastvideo.v1.models import get_scheduler
 import glob
 from fastvideo.v1.loader.fsdp_load import load_fsdp_model
-from fastvideo.v1.models.loader import PipelineComponentLoader
+from fastvideo.v1.models.component_loader import PipelineComponentLoader
 
 logger = init_logger(__name__)
 
