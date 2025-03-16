@@ -50,8 +50,8 @@ def load_text_encoder(
 
 
 def load_tokenizer(tokenizer_type, tokenizer_path=None, padding_side="right", logger=None):
-    if tokenizer_path is None:
-        tokenizer_path = TOKENIZER_PATH[tokenizer_type]
+    # if tokenizer_path is None:
+    tokenizer_path = TOKENIZER_PATH[tokenizer_type]
     if logger is not None:
         logger.info(f"Loading tokenizer ({tokenizer_type}) from: {tokenizer_path}")
 

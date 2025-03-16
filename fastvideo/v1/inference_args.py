@@ -29,6 +29,9 @@ class InferenceArgs:
     # Model and path configuration
     model_path: str
     model: str = "HYVideo-T/2-cfgdistill"
+    use_v1_text_encoder: bool = False
+    use_v1_vae: bool = False
+    use_v1_transformer: bool = False
     dit_weight: Optional[str] = None
     model_dir: Optional[str] = None
     
@@ -138,6 +141,21 @@ class InferenceArgs:
 
     @staticmethod
     def add_cli_args(parser: argparse.ArgumentParser):
+        parser.add_argument(
+            "--use-v1-text-encoder",
+            action="store_true",
+            help="Use the v1 text encoder",
+        )
+        parser.add_argument(
+            "--use-v1-vae",
+            action="store_true",
+            help="Use the v1 vae",
+        )
+        parser.add_argument(
+            "--use-v1-transformer",
+            action="store_true",
+            help="Use the v1 transformer",
+        )
         # Model and path configuration
         parser.add_argument(
             "--model-path",

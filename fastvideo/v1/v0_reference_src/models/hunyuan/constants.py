@@ -78,9 +78,13 @@ TEXT_ENCODER_PATH = {
 }
 
 # Tokenizer
+# TOKENIZER_PATH = {
+#     "clipL": f"{MODEL_BASE}/text_encoder_2",
+#     "llm": f"{MODEL_BASE}/text_encoder",
+# }
 TOKENIZER_PATH = {
-    "clipL": f"{MODEL_BASE}/text_encoder_2",
-    "llm": f"{MODEL_BASE}/text_encoder",
+    "clipL": f"{MODEL_BASE}/tokenizer_2",
+    "llm": f"{MODEL_BASE}/tokenizer",
 }
 
 TEXT_PROJECTION = {

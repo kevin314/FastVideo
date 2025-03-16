@@ -13,10 +13,10 @@ from diffusers.utils.torch_utils import randn_tensor
 
 from fastvideo.v1.pipelines.pipeline_batch_info import ForwardBatch
 from fastvideo.v1.inference_args import InferenceArgs
-from fastvideo.v1.models.hunyuan.text_encoder import TextEncoder
-from fastvideo.v1.models.hunyuan.vae.autoencoder_kl_causal_3d import AutoencoderKLCausal3D
-from fastvideo.v1.models.hunyuan.constants import PRECISION_TO_TYPE
-from fastvideo.v1.distributed.parallel_state import get_sp_group
+from fastvideo.v1.v0_reference_src.models.hunyuan.text_encoder import TextEncoder
+from fastvideo.v1.v0_reference_src.models.hunyuan.vae.autoencoder_kl_causal_3d import AutoencoderKLCausal3D
+from fastvideo.v1.v0_reference_src.models.hunyuan.constants import PRECISION_TO_TYPE
+from fastvideo.v1.v0_reference_src.distributed.parallel_state import get_sp_group
 from fastvideo.v1.logger import init_logger
 from einops import rearrange
 from diffusers.utils import BaseOutput
@@ -420,7 +420,7 @@ class DiffusionPipelineBase(ABC):
         # 5. Prepare latent variables
         batch = self.prepare_latents(batch)
 
-        from fastvideo.v1.utils.parallel_states import nccl_info
+        from fastvideo.v1.v0_reference_src.utils.parallel_states import nccl_info
         world_size, rank = nccl_info.sp_size, nccl_info.rank_within_group
         # world_size = 1
         # rank = 0
@@ -541,8 +541,8 @@ class DiffusionPipelineBase(ABC):
 
         # if sp_group:
         #     latents = sp_group.all_gather(latents, dim=2)
-        from fastvideo.v1.utils.communications import all_gather
-        from fastvideo.v1.utils.parallel_states import get_sequence_parallel_state
+        from fastvideo.v1.v0_reference_src.utils.communications import all_gather
+        from fastvideo.v1.v0_reference_src.utils.parallel_states import get_sequence_parallel_state
         if get_sequence_parallel_state():
             latents = all_gather(latents, dim=2)
 

@@ -6,8 +6,8 @@ from diffusers.configuration_utils import ConfigMixin, register_to_config
 from diffusers.models import ModelMixin
 from einops import rearrange
 
-from fastvideo.v1.models.hunyuan.modules.posemb_layers import get_nd_rotary_pos_embed
-from fastvideo.v1.utils.parallel_states import nccl_info
+from fastvideo.v1.v0_reference_src.models.hunyuan.modules.posemb_layers import get_nd_rotary_pos_embed
+from fastvideo.v1.v0_reference_src.utils.parallel_states import nccl_info
 
 from .activation_layers import get_activation_layer
 from .attenion import parallel_attention

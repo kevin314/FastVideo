@@ -8,10 +8,10 @@ except ImportError:
     print("Could not load Sliding Tile Attention.")
     sliding_tile_attention = None
 
-from fastvideo.v1.models.flash_attn_no_pad import flash_attn_no_pad
+from fastvideo.v1.v0_reference_src.models.flash_attn_no_pad import flash_attn_no_pad
 from flash_attn import flash_attn_func
-from fastvideo.v1.utils.communications import all_gather, all_to_all_4D
-from fastvideo.v1.utils.parallel_states import get_sequence_parallel_state, nccl_info
+from fastvideo.v1.v0_reference_src.utils.communications import all_gather, all_to_all_4D
+from fastvideo.v1.v0_reference_src.utils.parallel_states import get_sequence_parallel_state, nccl_info
 
 
 def attention(

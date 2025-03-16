@@ -1,13 +1,14 @@
 #!/bin/bash
 
 num_gpus=4
-export MODEL_BASE=FastVideo/FastHunyuan-diffusers
+export MODEL_BASE=data/FastHunyuan-diffusers
 # export MODEL_BASE=hunyuanvideo-community/HunyuanVideo
 # Note that the tp_size and sp_size should be the same and equal to the number
 # of GPUs. They are used for different parallel groups. sp_size is used for
 # dit model and tp_size is used for encoder models.
 torchrun --nnodes=1 --nproc_per_node=$num_gpus --master_port 29503 \
     fastvideo/v1/sample/v1_fastvideo_inference.py \
+    --use-v1-transformer \
     --sp_size 4 \
     --tp_size 4 \
     --height 720 \

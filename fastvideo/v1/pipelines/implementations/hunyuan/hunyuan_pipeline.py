@@ -53,7 +53,7 @@ class DiffusionPipelineOutput(BaseOutput):
 class HunyuanVideoPipeline(ComposedPipelineBase):
 
     def initialize_encoders(self, modules: Dict[str, Any], inference_args: InferenceArgs):
-        use_v1 = False
+        use_v1 = inference_args.use_v1_text_encoder
         if use_v1:
             self.initialize_encoders_v1(modules, inference_args)
         else:

@@ -55,6 +55,8 @@ class DecodingStage(PipelineStage):
             with torch.autocast(device_type="cuda", dtype=vae_dtype, enabled=vae_autocast_enabled):
                 if inference_args.vae_tiling:
                     self.vae.enable_tiling()
+                # if inference_args.vae_sp:
+                #     self.vae.enable_parallel()
                 image = self.vae.decode(latents)
 
 

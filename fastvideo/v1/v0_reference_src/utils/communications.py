@@ -9,7 +9,7 @@ import torch
 import torch.distributed as dist
 from torch import Tensor
 
-from fastvideo.v1.utils.parallel_states import nccl_info
+from fastvideo.v1.v0_reference_src.utils.parallel_states import nccl_info
 
 
 def broadcast(input_: torch.Tensor):

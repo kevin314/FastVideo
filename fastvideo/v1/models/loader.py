@@ -79,11 +79,10 @@ class TextEncoderLoader(ComponentLoader):
 
     def load(self, model_path: str, architecture: str, inference_args: InferenceArgs):
         """Load the text encoders based on the model path, architecture, and inference args."""
-        use_v1 = False
-        if not use_v1:
-            return self.load_v0(model_path, architecture, inference_args)
-        else:
-            return self.load_v1(model_path, architecture, inference_args)
+        # should always use v1 here. If inference_args.use_v1_text_encoder is False,
+        # the pipeline will overwrite this text encoder with a v0 text encoder
+        # during initialize_encoders()
+        return self.load_v1(model_path, architecture, inference_args)
     
     def load_v1(self, model_path: str, architecture: str, inference_args: InferenceArgs):
         """Load the text encoders based on the model path, architecture, and inference args."""
@@ -99,40 +98,6 @@ class TextEncoderLoader(ComponentLoader):
         model = model_loader.load_model(model_path, model_config, inference_args)
         return model
     
-    def load_v0(self, model_path: str, architecture: str, inference_args: InferenceArgs):        
-        from fastvideo.v1.pipelines.hunyuan.constants import PROMPT_TEMPLATE
-        from fastvideo.v1.models.hunyuan.text_encoder import TextEncoder
-        # Text encoder
-        if inference_args.prompt_template_video is not None:
-            crop_start = PROMPT_TEMPLATE[inference_args.prompt_template_video].get("crop_start", 0)
-        elif inference_args.prompt_template is not None:
-            crop_start = PROMPT_TEMPLATE[inference_args.prompt_template].get("crop_start", 0)
-        else:
-            crop_start = 0
-        max_length = inference_args.text_len + crop_start
-
-        # prompt_template
-        prompt_template = (PROMPT_TEMPLATE[inference_args.prompt_template] if inference_args.prompt_template is not None else None)
-
-        # prompt_template_video
-        prompt_template_video = (PROMPT_TEMPLATE[inference_args.prompt_template_video]
-                                 if inference_args.prompt_template_video is not None else None)
-
-        text_encoder = TextEncoder(
-            text_encoder_type=inference_args.text_encoder,
-            text_encoder_path=model_path,
-            max_length=max_length,
-            text_encoder_precision=inference_args.text_encoder_precision,
-            tokenizer_type=inference_args.tokenizer,
-            prompt_template=prompt_template,
-            prompt_template_video=prompt_template_video,
-            hidden_state_skip_layer=inference_args.hidden_state_skip_layer,
-            apply_final_norm=inference_args.apply_final_norm,
-            reproduce=inference_args.reproduce,
-            logger=logger,
-            device=self.device if not inference_args.use_cpu_offload else "cpu",
-        )
-        return text_encoder
 
 class TokenizerLoader(ComponentLoader):
     """Loader for tokenizers."""
@@ -150,10 +115,32 @@ class TokenizerLoader(ComponentLoader):
         logger.info(f"Loaded tokenizer: {tokenizer.__class__.__name__}")
         return tokenizer
 
+
 class VAELoader(ComponentLoader):
     """Loader for VAE."""
-    
     def load(self, model_path: str, architecture: str, inference_args: InferenceArgs):
+        """Load the VAE based on the model path, architecture, and inference args."""
+        use_v1 = inference_args.use_v1_vae
+        if not use_v1:
+            return self.load_v0(model_path, architecture, inference_args)
+        else:
+            return self.load_v1(model_path, architecture, inference_args)
+        
+    def load_v0(self, model_path: str, architecture: str, inference_args: InferenceArgs):
+        """Custom VAE loading for Hunyuan"""
+        # TODO(will): replace this with abstracted model
+        from fastvideo.v1.v0_reference_src.models.hunyuan.vae import load_vae
+        vae, _, s_ratio, t_ratio = load_vae(
+            inference_args.vae,
+            inference_args.vae_precision,
+            logger=logger,
+            device=self.device
+        )
+        vae_kwargs = {"s_ratio": s_ratio, "t_ratio": t_ratio}
+        vae.kwargs = vae_kwargs
+        return vae
+    
+    def load_v1(self, model_path: str, architecture: str, inference_args: InferenceArgs):
         """Load the VAE based on the model path, architecture, and inference args."""
         # TODO(will): move this to a constants file
         from fastvideo.v1.utils import PRECISION_TO_TYPE
@@ -189,10 +176,44 @@ class VAELoader(ComponentLoader):
 
 class TransformerLoader(ComponentLoader):
     """Loader for transformer."""
-    
+
     def load(self, model_path: str, architecture: str, inference_args: InferenceArgs):
         """Load the transformer based on the model path, architecture, and inference args."""
-        
+        use_v1 = inference_args.use_v1_transformer
+        if not use_v1:
+            return self.load_v0(model_path, architecture, inference_args)
+        else:
+            return self.load_v1(model_path, architecture, inference_args)
+    
+    def load_v0(self, model_path: str, architecture: str, inference_args: InferenceArgs):
+        """Custom transformer loading for Hunyuan"""
+        # TODO(will): replace this with abstracted model
+        from fastvideo.v1.v0_reference_src.models.hunyuan.modules import load_model
+        from fastvideo.v1.utils import PRECISION_TO_TYPE
+        # Disable gradient
+        torch.set_grad_enabled(False)
+
+        # =========================== Build main model ===========================
+        logger.info("Building model...")
+        factor_kwargs = {"device": self.device, "dtype": PRECISION_TO_TYPE[inference_args.precision]}
+        in_channels = inference_args.latent_channels
+        out_channels = inference_args.latent_channels
+
+        model = load_model(
+            inference_args,
+            in_channels=in_channels,
+            out_channels=out_channels,
+            factor_kwargs=factor_kwargs,
+        )
+        model = model.to(self.device)
+        model = self._load_transformer_state_dict(inference_args, model, inference_args.model_path)
+        if inference_args.enable_torch_compile:
+            model = torch.compile(model)
+        model.eval()
+        return model
+
+    def load_v1(self, model_path: str, architecture: str, inference_args: InferenceArgs):
+        """Load the transformer based on the model path, architecture, and inference args."""
         model_config = get_diffusers_config(model=model_path)
         cls_name = model_config.pop("_class_name")
         if cls_name is None:
