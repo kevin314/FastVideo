@@ -448,20 +448,20 @@ def get_down_block3d(
         attention_head_dim = num_attention_heads
 
     down_block_type = (down_block_type[7:] if down_block_type.startswith("UNetRes") else down_block_type)
-    if down_block_type == "DownEncoderBlockCausal3D":
-        return DownEncoderBlockCausal3D(
-            num_layers=num_layers,
-            in_channels=in_channels,
-            out_channels=out_channels,
-            dropout=dropout,
-            add_downsample=add_downsample,
-            downsample_stride=downsample_stride,
-            resnet_eps=resnet_eps,
-            resnet_act_fn=resnet_act_fn,
-            resnet_groups=resnet_groups,
-            downsample_padding=downsample_padding,
-            resnet_time_scale_shift=resnet_time_scale_shift,
-        )
+    # if down_block_type == "DownEncoderBlockCausal3D":
+    return DownEncoderBlockCausal3D(
+        num_layers=num_layers,
+        in_channels=in_channels,
+        out_channels=out_channels,
+        dropout=dropout,
+        add_downsample=add_downsample,
+        downsample_stride=downsample_stride,
+        resnet_eps=resnet_eps,
+        resnet_act_fn=resnet_act_fn,
+        resnet_groups=resnet_groups,
+        downsample_padding=downsample_padding,
+        resnet_time_scale_shift=resnet_time_scale_shift,
+    )
     raise ValueError(f"{down_block_type} does not exist.")
 
 
@@ -502,21 +502,21 @@ def get_up_block3d(
         attention_head_dim = num_attention_heads
 
     up_block_type = (up_block_type[7:] if up_block_type.startswith("UNetRes") else up_block_type)
-    if up_block_type == "UpDecoderBlockCausal3D":
-        return UpDecoderBlockCausal3D(
-            num_layers=num_layers,
-            in_channels=in_channels,
-            out_channels=out_channels,
-            resolution_idx=resolution_idx,
-            dropout=dropout,
-            add_upsample=add_upsample,
-            upsample_scale_factor=upsample_scale_factor,
-            resnet_eps=resnet_eps,
-            resnet_act_fn=resnet_act_fn,
-            resnet_groups=resnet_groups,
-            resnet_time_scale_shift=resnet_time_scale_shift,
-            temb_channels=temb_channels,
-        )
+    # if up_block_type == "UpDecoderBlockCausal3D":
+    return UpDecoderBlockCausal3D(
+        num_layers=num_layers,
+        in_channels=in_channels,
+        out_channels=out_channels,
+        resolution_idx=resolution_idx,
+        dropout=dropout,
+        add_upsample=add_upsample,
+        upsample_scale_factor=upsample_scale_factor,
+        resnet_eps=resnet_eps,
+        resnet_act_fn=resnet_act_fn,
+        resnet_groups=resnet_groups,
+        resnet_time_scale_shift=resnet_time_scale_shift,
+        temb_channels=temb_channels,
+    )
     raise ValueError(f"{up_block_type} does not exist.")
 
 

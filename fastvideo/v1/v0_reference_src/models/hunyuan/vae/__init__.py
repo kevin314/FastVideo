@@ -35,7 +35,7 @@ def load_vae(
     else:
         vae = AutoencoderKLCausal3D.from_config(config)
 
-    vae_ckpt = Path(vae_path) / "pytorch_model.pt"
+    vae_ckpt = Path("/home/ubuntu/src/FastVideo/data/hunyuan/hunyuan-video-t2v-720p/vae/pytorch_model.pt")
     assert vae_ckpt.exists(), f"VAE checkpoint not found: {vae_ckpt}"
 
     ckpt = torch.load(vae_ckpt, map_location=vae.device)

@@ -11,8 +11,7 @@ from vllm.distributed import (divide, get_tensor_model_parallel_rank,
                               get_tensor_model_parallel_world_size)
 from vllm.model_executor.custom_op import CustomOp
 from vllm.model_executor.utils import set_weight_attrs
-from vllm.platforms import current_platform
-from vllm.utils import LazyDict
+from fastvideo.v1.platforms import current_platform
 
 
 @CustomOp.register("fatrelu_and_mul")

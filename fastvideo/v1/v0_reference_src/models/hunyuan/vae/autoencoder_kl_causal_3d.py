@@ -25,7 +25,7 @@ import torch.nn as nn
 import torch.distributed as dist
 from diffusers.configuration_utils import ConfigMixin, register_to_config
 
-from fastvideo.v1.utils.parallel_states import nccl_info
+from fastvideo.v1.v0_reference_src.utils.parallel_states import nccl_info
 from fastvideo.v1.distributed.parallel_state import get_sp_group
 from fastvideo.v1.logger import init_logger
 
