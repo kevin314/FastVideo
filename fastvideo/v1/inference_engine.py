@@ -66,22 +66,17 @@ class InferenceEngine:
             ValueError: If the model type is not recognized or if the pipeline type
                 is not recognized.
         """
-        try:
-            logger.info(f"Building pipeline...")
-            # TODO(will): probably a better place to set device_str?
-            local_rank = os.environ.get("LOCAL_RANK", 0)
-            device_str = f"cuda:{local_rank}"
-            inference_args.device_str = device_str
-            inference_args.device = torch.device(device_str)
-            # TODO(will): I don't really like this api.
-            # it should be something closer to pipeline_cls.from_pretrained(...)
-            # this way for training we can just do pipeline_cls.from_pretrained(
-            # checkpoint_path) and have it handle everything.
-            pipeline = build_pipeline(inference_args)
-            logger.info(f"Pipeline Ready")
-        except Exception as e:
-            logger.error(f"Error loading pipeline: {e}")
-            raise RuntimeError(f"Failed to load pipeline: {e}")
+
+        logger.info(f"Building pipeline...")
+
+        # TODO(will): I don't really like this api.
+        # it should be something closer to pipeline_cls.from_pretrained(...)
+        # this way for training we can just do pipeline_cls.from_pretrained(
+        # checkpoint_path) and have it handle everything.
+        # TODO(Peiyuan): Then maybe we should only pass in model path and device, not the entire inference args?
+        pipeline = build_pipeline(inference_args)
+        logger.info(f"Pipeline Ready")
+
         
         # Create the inference engine
         return cls(pipeline, inference_args)
@@ -116,9 +111,6 @@ class InferenceEngine:
         flow_shift = inference_args.flow_shift
         embedded_guidance_scale = inference_args.embedded_cfg_scale
 
-        # generated from inference_args.seed
-        # seeds = inference_args.seeds
-        # generator = inference_args.generator
         
 
         # ========================================================================
@@ -144,31 +136,18 @@ class InferenceEngine:
         # ========================================================================
         if not isinstance(prompt, str):
             raise TypeError(f"`prompt` must be a string, but got {type(prompt)}")
-        prompt = [prompt.strip()]
+        prompt = prompt.strip()
 
         # negative prompt
         if negative_prompt is None or negative_prompt == "":
             negative_prompt = self.default_negative_prompt
         if not isinstance(negative_prompt, str):
             raise TypeError(f"`negative_prompt` must be a string, but got {type(negative_prompt)}")
-        negative_prompt = [negative_prompt.strip()]
+        negative_prompt = negative_prompt.strip()
 
 
-        # from fastvideo.v1.models.hunyuan.diffusion.schedulers import FlowMatchDiscreteScheduler
-        # scheduler = FlowMatchDiscreteScheduler(
-        #     shift=flow_shift,
-        #     reverse=self.inference_args.flow_reverse,
-        #     solver=self.inference_args.flow_solver,
-        # )
-
-        # # reset scheduler
-        # self.pipeline.scheduler = scheduler
-
-        # TODO(will): move to hunyuan stage
-        if "884" in self.inference_args.vae:
-            latents_size = [(video_length - 1) // 4 + 1, height // 8, width // 8]
-        elif "888" in self.inference_args.vae:
-            latents_size = [(video_length - 1) // 8 + 1, height // 8, width // 8]
+        # TODO(PY): move to hunyuan stage
+        latents_size = [(video_length - 1) // 4 + 1, height // 8, width // 8]
         n_tokens = latents_size[0] * latents_size[1] * latents_size[2]
 
         # ========================================================================

@@ -32,7 +32,6 @@ class TextEncoderModelOutput(ModelOutput):
 
     hidden_state: torch.FloatTensor = None
     attention_mask: Optional[torch.LongTensor] = None
-    hidden_states_list: Optional[Tuple[torch.FloatTensor, ...]] = None
     text_outputs: Optional[list] = None
 
 
@@ -51,7 +50,6 @@ class TextEncoder(nn.Module):
         prompt_template_video: Optional[dict] = None,
         hidden_state_skip_layer: Optional[int] = None,
         apply_final_norm: bool = False,
-        reproduce: bool = False,
         device=None,
     ):
         super().__init__()
@@ -67,25 +65,7 @@ class TextEncoder(nn.Module):
         self.prompt_template_video = prompt_template_video
         self.hidden_state_skip_layer = hidden_state_skip_layer
         self.apply_final_norm = apply_final_norm
-        self.reproduce = reproduce
 
-        self.use_template = self.prompt_template is not None
-        if self.use_template:
-            assert (isinstance(self.prompt_template, dict) and "template" in self.prompt_template
-                    ), f"`prompt_template` must be a dictionary with a key 'template', got {self.prompt_template}"
-            assert "{}" in str(self.prompt_template["template"]), (
-                "`prompt_template['template']` must contain a placeholder `{}` for the input text, "
-                f"got {self.prompt_template['template']}")
-
-        self.use_video_template = self.prompt_template_video is not None
-        if self.use_video_template:
-            if self.prompt_template_video is not None:
-                assert (
-                    isinstance(self.prompt_template_video, dict) and "template" in self.prompt_template_video
-                ), f"`prompt_template_video` must be a dictionary with a key 'template', got {self.prompt_template_video}"
-            assert "{}" in str(self.prompt_template_video["template"]), (
-                "`prompt_template_video['template']` must contain a placeholder `{}` for the input text, "
-                f"got {self.prompt_template_video['template']}")
 
         if "T5" in self.text_encoder_type:
             self.output_key = output_key or "last_hidden_state"
@@ -122,31 +102,18 @@ class TextEncoder(nn.Module):
         else:
             raise TypeError(f"Unsupported template type: {type(template)}")
 
-    def text2tokens(self, text, data_type="image"):
+    def text2tokens(self, text):
         """
         Tokenize the input text.
 
         Args:
             text (str or list): Input text.
         """
-        tokenize_input_type = "str"
-        if self.use_template:
-            if data_type == "image":
-                prompt_template = self.prompt_template["template"]
-            elif data_type == "video":
-                prompt_template = self.prompt_template_video["template"]
-            else:
-                raise ValueError(f"Unsupported data type: {data_type}")
-            if isinstance(text, (list, tuple)):
-                text = [self.apply_text_to_template(one_text, prompt_template) for one_text in text]
-                if isinstance(text[0], list):
-                    tokenize_input_type = "list"
-            elif isinstance(text, str):
-                text = self.apply_text_to_template(text, prompt_template)
-                if isinstance(text, list):
-                    tokenize_input_type = "list"
-            else:
-                raise TypeError(f"Unsupported text type: {type(text)}")
+        if self.prompt_template_video is not None:
+            prompt_template = self.prompt_template_video["template"]
+        
+            text = self.apply_text_to_template(text, prompt_template)
+
 
         kwargs = dict(
             truncation=True,
@@ -154,34 +121,19 @@ class TextEncoder(nn.Module):
             padding="max_length",
             return_tensors="pt",
         )
-        if tokenize_input_type == "str":
-            return self.tokenizer(
-                text,
-                return_length=False,
-                return_overflowing_tokens=False,
-                return_attention_mask=True,
-                **kwargs,
-            )
-        elif tokenize_input_type == "list":
-            return self.tokenizer.apply_chat_template(
-                text,
-                add_generation_prompt=True,
-                tokenize=True,
-                return_dict=True,
-                **kwargs,
-            )
-        else:
-            raise ValueError(f"Unsupported tokenize_input_type: {tokenize_input_type}")
+        return self.tokenizer(
+            text,
+            return_length=False,
+            return_overflowing_tokens=False,
+            return_attention_mask=True,
+            **kwargs,
+        )
 
     def encode(
         self,
         batch_encoding,
         use_attention_mask=None,
-        output_hidden_states=False,
-        do_sample=None,
         hidden_state_skip_layer=None,
-        return_texts=False,
-        data_type="image",
         device=None,
     ):
         """
@@ -192,8 +144,6 @@ class TextEncoder(nn.Module):
             output_hidden_states (bool): Whether to output hidden states. If False, return the value of
                 self.output_key. If True, return the entire output. If set self.hidden_state_skip_layer,
                 output_hidden_states will be set True. Defaults to False.
-            do_sample (bool): Whether to sample from the model. Used for Decoder-Only LLMs. Defaults to None.
-                When self.produce is False, do_sample is set to True by default.
             hidden_state_skip_layer (int): Number of hidden states to hidden_state_skip_layer. 0 means the last layer.
                 If None, self.output_key will be used. Defaults to None.
             return_texts (bool): Whether to return the decoded texts. Defaults to False.
@@ -201,14 +151,13 @@ class TextEncoder(nn.Module):
         device = self.model.device if device is None else device
         use_attention_mask = use_default(use_attention_mask, self.use_attention_mask)
         hidden_state_skip_layer = use_default(hidden_state_skip_layer, self.hidden_state_skip_layer)
-        do_sample = use_default(do_sample, not self.reproduce)
         attention_mask = (batch_encoding["attention_mask"].to(device) if use_attention_mask else None)
-        # print(f"batch_encoding: {batch_encoding}")
-        # logger.info(f"attention_mask: {attention_mask}")
+
+        # note: clip will need attention mask
         outputs = self.model(
             input_ids=batch_encoding["input_ids"].to(device),
-            # attention_mask=attention_mask,
-            output_hidden_states=output_hidden_states or hidden_state_skip_layer is not None,
+            attention_mask=attention_mask,
+            output_hidden_states=hidden_state_skip_layer is not None,
         )
         if hidden_state_skip_layer is not None:
             last_hidden_state = outputs.hidden_states[-(hidden_state_skip_layer + 1)]
@@ -220,26 +169,21 @@ class TextEncoder(nn.Module):
             last_hidden_state = outputs[self.output_key]
 
         # Remove hidden states of instruction tokens, only keep prompt tokens.
-        if self.use_template:
-            if data_type == "image":
-                crop_start = self.prompt_template.get("crop_start", -1)
-            elif data_type == "video":
-                crop_start = self.prompt_template_video.get("crop_start", -1)
-            else:
-                raise ValueError(f"Unsupported data type: {data_type}")
-            if crop_start > 0:
-                last_hidden_state = last_hidden_state[:, crop_start:]
-                attention_mask = (attention_mask[:, crop_start:] if use_attention_mask else None)           
-        if output_hidden_states:
-            return TextEncoderModelOutput(last_hidden_state, attention_mask, outputs.hidden_states)
-        return TextEncoderModelOutput(last_hidden_state, attention_mask)
+        if self.prompt_template_video is not None:
+        
+            crop_start = self.prompt_template_video.get("crop_start", -1)
+
+            last_hidden_state = last_hidden_state[:, crop_start:]
+            attention_mask = (attention_mask[:, crop_start:] if use_attention_mask else None)
+            total_length = attention_mask.sum()
+            last_hidden_state = last_hidden_state[:, :total_length]
+        return TextEncoderModelOutput(last_hidden_state)
 
     def forward(
         self,
         text,
         use_attention_mask=None,
         output_hidden_states=False,
-        do_sample=False,
         hidden_state_skip_layer=None,
         return_texts=False,
     ):
@@ -248,7 +192,6 @@ class TextEncoder(nn.Module):
             batch_encoding,
             use_attention_mask=use_attention_mask,
             output_hidden_states=output_hidden_states,
-            do_sample=do_sample,
             hidden_state_skip_layer=hidden_state_skip_layer,
             return_texts=return_texts,
         )

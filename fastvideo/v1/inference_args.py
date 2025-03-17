@@ -17,7 +17,6 @@
 
 import argparse
 import dataclasses
-from fastvideo.v1.logger import init_logger
 from fastvideo.v1.utils import FlexibleArgumentParser
 from typing import List, Optional
 
@@ -28,12 +27,6 @@ from typing import List, Optional
 class InferenceArgs:
     # Model and path configuration
     model_path: str
-    model: str = "HYVideo-T/2-cfgdistill"
-    use_v1_text_encoder: bool = False
-    use_v1_vae: bool = False
-    use_v1_transformer: bool = False
-    dit_weight: Optional[str] = None
-    model_dir: Optional[str] = None
     
     # HuggingFace specific parameters
     trust_remote_code: bool = False
@@ -53,73 +46,43 @@ class InferenceArgs:
     guidance_rescale: float = 0.0
     embedded_cfg_scale: float = 6.0
     flow_shift: int = 7
-    flow_reverse: bool = False
 
     output_type: str = "pil"
     
     # Model configuration
-    latent_channels: int = 16
     precision: str = "bf16"
-    rope_theta: int = 256
     
-    # VAE configuration
-    vae: str = "884-16c-hy"
+    # VAE configurationi
     vae_precision: str = "fp16"
     vae_tiling: bool = True
-    vae_url: Optional[str] = None
     vae_sp: bool = False
     
     # Text encoder configuration
-    text_encoder: str = "llm"
     text_encoder_precision: str = "fp16"
-    text_states_dim: int = 4096
     text_len: int = 256
-    tokenizer: str = "llm"
-    prompt_template: str = "dit-llm-encode"
-    prompt_template_video: str = "dit-llm-encode-video"
     hidden_state_skip_layer: int = 2
-    apply_final_norm: bool = False
     
     # Secondary text encoder
-    text_encoder_2: str = "clipL"
     text_encoder_precision_2: str = "fp16"
-    text_states_dim_2: int = 768
-    tokenizer_2: str = "clipL"
     text_len_2: int = 77
-    caption_url: Optional[str] = None
     
     # Flow Matching parameters
     flow_solver: str = "euler"
-    use_linear_quadratic_schedule: bool = False
-    linear_schedule_end: int = 25
     denoise_type: str = "flow"
     
     # STA (Spatial-Temporal Attention) parameters
     mask_strategy_file_path: Optional[str] = None
-    rel_l1_thresh: float = 0.15
     enable_torch_compile: bool = False
     
     # Scheduler options
     scheduler_type: str = "euler"
-    linear_threshold: float = 0.1
-    linear_range: float = 0.75
     
-    # HunYuan specific parameters
     neg_prompt: Optional[str] = None
-    batch_size: int = 1
     num_videos: int = 1
     fps: int = 24
-    load_key: str = "module"
     use_cpu_offload: bool = False
-    reproduce: bool = False
     disable_autocast: bool = False
     
-    # StepVideo specific parameters
-    time_shift: float = 13.0
-    cfg_scale: float = 9.0
-    
-    # Optimization flags
-    enable_teacache: bool = False
     
     # Logging
     log_level: str = "info"
@@ -132,7 +95,6 @@ class InferenceArgs:
     prompt_path: Optional[str] = None
     output_path: str = "outputs/"
     seed: int = 1024
-    seeds: Optional[List[int]] = None
     device_str: Optional[str] = None
     device = None
 
@@ -162,12 +124,6 @@ class InferenceArgs:
             type=str,
             help="The path of the model weights. This can be a local folder or a Hugging Face repo ID.",
             required=True,
-        )
-        parser.add_argument(
-            "--model",
-            type=str,
-            default=InferenceArgs.model,
-            help="Model type to use",
         )
         parser.add_argument(
             "--dit-weight",
@@ -267,11 +223,6 @@ class InferenceArgs:
             help="Flow shift parameter",
         )
         parser.add_argument(
-            "--flow-reverse",
-            action="store_true",
-            help="Reverse flow direction",
-        )
-        parser.add_argument(
             "--output-type",
             type=str,
             default=InferenceArgs.output_type,
@@ -279,13 +230,7 @@ class InferenceArgs:
             help="Output type for the generated video",
         )
         
-        # Model configuration
-        parser.add_argument(
-            "--latent-channels",
-            type=int,
-            default=InferenceArgs.latent_channels,
-            help="Number of latent channels",
-        )
+
         parser.add_argument(
             "--precision",
             type=str,
@@ -293,20 +238,8 @@ class InferenceArgs:
             choices=["fp32", "fp16", "bf16"],
             help="Precision for the model",
         )
-        parser.add_argument(
-            "--rope-theta",
-            type=int,
-            default=InferenceArgs.rope_theta,
-            help="Theta used in RoPE",
-        )
         
         # VAE configuration
-        parser.add_argument(
-            "--vae",
-            type=str,
-            default=InferenceArgs.vae,
-            help="VAE model to use",
-        )
         parser.add_argument(
             "--vae-precision",
             type=str,
@@ -321,23 +254,12 @@ class InferenceArgs:
             help="Enable VAE tiling",
         )
         parser.add_argument(
-            "--vae-url",
-            type=str,
-            help="URL for VAE server (StepVideo)",
-        )
-        parser.add_argument(
             "--vae-sp",
             action="store_true",
             help="Enable VAE spatial parallelism",
         )
         
-        # Text encoder configuration
-        parser.add_argument(
-            "--text-encoder",
-            type=str,
-            default=InferenceArgs.text_encoder,
-            help="Text encoder to use",
-        )
+
         parser.add_argument(
             "--text-encoder-precision",
             type=str,
@@ -346,54 +268,13 @@ class InferenceArgs:
             help="Precision for text encoder",
         )
         parser.add_argument(
-            "--text-states-dim",
-            type=int,
-            default=InferenceArgs.text_states_dim,
-            help="Dimension of text states",
-        )
-        parser.add_argument(
             "--text-len",
             type=int,
             default=InferenceArgs.text_len,
             help="Maximum text length",
         )
-        parser.add_argument(
-            "--tokenizer",
-            type=str,
-            default=InferenceArgs.tokenizer,
-            help="Tokenizer to use",
-        )
-        parser.add_argument(
-            "--prompt-template",
-            type=str,
-            default=InferenceArgs.prompt_template,
-            help="Template for prompt processing",
-        )
-        parser.add_argument(
-            "--prompt-template-video",
-            type=str,
-            default=InferenceArgs.prompt_template_video,
-            help="Template for video prompt processing",
-        )
-        parser.add_argument(
-            "--hidden-state-skip-layer",
-            type=int,
-            default=InferenceArgs.hidden_state_skip_layer,
-            help="Number of layers to skip for hidden states",
-        )
-        parser.add_argument(
-            "--apply-final-norm",
-            action="store_true",
-            help="Apply final normalization",
-        )
-        
         # Secondary text encoder
-        parser.add_argument(
-            "--text-encoder-2",
-            type=str,
-            default=InferenceArgs.text_encoder_2,
-            help="Secondary text encoder to use",
-        )
+
         parser.add_argument(
             "--text-encoder-precision-2",
             type=str,
@@ -402,27 +283,10 @@ class InferenceArgs:
             help="Precision for secondary text encoder",
         )
         parser.add_argument(
-            "--text-states-dim-2",
-            type=int,
-            default=InferenceArgs.text_states_dim_2,
-            help="Dimension of secondary text states",
-        )
-        parser.add_argument(
-            "--tokenizer-2",
-            type=str,
-            default=InferenceArgs.tokenizer_2,
-            help="Secondary tokenizer to use",
-        )
-        parser.add_argument(
             "--text-len-2",
             type=int,
             default=InferenceArgs.text_len_2,
             help="Maximum secondary text length",
-        )
-        parser.add_argument(
-            "--caption-url",
-            type=str,
-            help="URL for caption server (StepVideo)",
         )
         
         # Flow Matching parameters
@@ -431,17 +295,6 @@ class InferenceArgs:
             type=str,
             default=InferenceArgs.flow_solver,
             help="Solver for flow matching",
-        )
-        parser.add_argument(
-            "--use-linear-quadratic-schedule",
-            action="store_true",
-            help="Use linear quadratic schedule for flow matching",
-        )
-        parser.add_argument(
-            "--linear-schedule-end",
-            type=int,
-            default=InferenceArgs.linear_schedule_end,
-            help="End step for linear quadratic schedule for flow matching",
         )
         parser.add_argument(
             "--denoise-type",
@@ -457,12 +310,6 @@ class InferenceArgs:
             help="Path to mask strategy JSON file for STA",
         )
         parser.add_argument(
-            "--rel-l1-thresh",
-            type=float,
-            default=InferenceArgs.rel_l1_thresh,
-            help="Relative L1 threshold for STA",
-        )
-        parser.add_argument(
             "--enable-torch-compile",
             action="store_true",
             help="Use torch.compile for speeding up STA inference without teacache",
@@ -475,18 +322,6 @@ class InferenceArgs:
             default=InferenceArgs.scheduler_type,
             help="Type of scheduler to use",
         )
-        parser.add_argument(
-            "--linear-threshold",
-            type=float,
-            default=InferenceArgs.linear_threshold,
-            help="Linear threshold for PCM scheduler",
-        )
-        parser.add_argument(
-            "--linear-range",
-            type=float,
-            default=InferenceArgs.linear_range,
-            help="Linear range for PCM scheduler",
-        )
         
         # HunYuan specific parameters
         parser.add_argument(
@@ -494,12 +329,6 @@ class InferenceArgs:
             type=str,
             default=InferenceArgs.neg_prompt,
             help="Negative prompt for sampling",
-        )
-        parser.add_argument(
-            "--batch-size",
-            type=int,
-            default=InferenceArgs.batch_size,
-            help="Batch size for inference",
         )
         parser.add_argument(
             "--num-videos",
@@ -514,20 +343,9 @@ class InferenceArgs:
             help="Frames per second for output video",
         )
         parser.add_argument(
-            "--load-key",
-            type=str,
-            default=InferenceArgs.load_key,
-            help="Key to load the model states. 'module' for the main model, 'ema' for the EMA model",
-        )
-        parser.add_argument(
             "--use-cpu-offload",
             action="store_true",
             help="Use CPU offload for the model load",
-        )
-        parser.add_argument(
-            "--reproduce",
-            action="store_true",
-            help="Enable reproducibility by setting random seeds and deterministic algorithms",
         )
         parser.add_argument(
             "--disable-autocast",
@@ -535,26 +353,8 @@ class InferenceArgs:
             help="Disable autocast for denoising loop and vae decoding in pipeline sampling",
         )
         
-        # StepVideo specific parameters
-        parser.add_argument(
-            "--time-shift",
-            type=float,
-            default=InferenceArgs.time_shift,
-            help="Time shift parameter for StepVideo",
-        )
-        parser.add_argument(
-            "--cfg-scale",
-            type=float,
-            default=InferenceArgs.cfg_scale,
-            help="CFG scale for StepVideo",
-        )
         
-        # Optimization flags
-        parser.add_argument(
-            "--enable-teacache",
-            action="store_true",
-            help="Enable TeaCache optimization",
-        )
+
 
         # Logging
         parser.add_argument(
@@ -581,13 +381,11 @@ class InferenceArgs:
         )
         parser.add_argument(
             "--prompt-path",
-            "--prompt_path",
             type=str,
             help="Path to a text file containing the prompt",
         )
         parser.add_argument(
             "--output-path",
-            "--output_path",
             type=str,
             default=InferenceArgs.output_path,
             help="Directory to save generated videos",
@@ -635,8 +433,10 @@ class InferenceArgs:
         # Validate VAE spatial parallelism with VAE tiling
         if self.vae_sp and not self.vae_tiling:
             raise ValueError("Currently enabling vae_sp requires enabling vae_tiling, please set --vae-tiling to True.")
-        
+        assert self.prompt is not None or self.prompt_path is not None, "Either prompt or prompt_path must be provided"
+        assert self.prompt_path.endswith(".txt"), "prompt_path must be a text file"
 
+_inference_args = None
 def prepare_inference_args(argv: List[str]) -> InferenceArgs:
     """
     Prepare the inference arguments from the command line arguments.
@@ -653,8 +453,13 @@ def prepare_inference_args(argv: List[str]) -> InferenceArgs:
     raw_args = parser.parse_args(argv)
     inference_args = InferenceArgs.from_cli_args(raw_args)
     inference_args.check_inference_args()
+    global _inference_args
+    _inference_args = inference_args
     return inference_args
 
+def get_inference_args() -> InferenceArgs:
+    global _inference_args
+    return _inference_args
 
 class DeprecatedAction(argparse.Action):
     def __init__(self, option_strings, dest, nargs=0, **kwargs):

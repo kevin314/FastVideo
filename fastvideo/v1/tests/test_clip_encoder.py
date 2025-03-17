@@ -1,5 +1,6 @@
 from fastvideo.v1.models.encoders.clip import CLIPTextModel
-from fastvideo.v1.v0_reference_src.models.hunyuan.text_encoder import TextEncoder, load_text_encoder, load_tokenizer
+# TODO: check if correct
+from fastvideo.models.hunyuan.text_encoder import TextEncoder, load_text_encoder, load_tokenizer
 import os
 import torch
 import torch.nn as nn
@@ -87,11 +88,10 @@ def test_clip_encoder():
         device=device
     )
 
-    from fastvideo.v1.models.component_loader import TextEncoderLoader
-    from fastvideo.v1.models.loader.loader import DefaultModelLoader
-    loader = DefaultModelLoader()
+    from fastvideo.v1.models.loader.component_loader import TextEncoderLoader
+    loader = TextEncoderLoader()
     args.device_str = "cuda:0"
-    model2 = loader.load_model(model_path, hf_config, args)
+    model2 = loader.load_model(model_path, hf_config, device)
     
     # Load the HuggingFace implementation directly
     # model2 = CLIPTextModel(hf_config)

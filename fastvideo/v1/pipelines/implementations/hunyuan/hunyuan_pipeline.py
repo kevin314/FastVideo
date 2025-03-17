@@ -53,56 +53,8 @@ class DiffusionPipelineOutput(BaseOutput):
 class HunyuanVideoPipeline(ComposedPipelineBase):
 
     def initialize_encoders(self, modules: Dict[str, Any], inference_args: InferenceArgs):
-        use_v1 = inference_args.use_v1_text_encoder
-        if use_v1:
-            self.initialize_encoders_v1(modules, inference_args)
-        else:
-            self.initialize_encoders_v0(modules, inference_args)
+        self.initialize_encoders_v1(modules, inference_args)
 
-    def initialize_encoders_v0(self, modules: Dict[str, Any], inference_args: InferenceArgs):
-        from fastvideo.v1.v0_reference_src.models.hunyuan.text_encoder import TextEncoder
-        # Text encoder
-        if inference_args.prompt_template_video is not None:
-            crop_start = PROMPT_TEMPLATE[inference_args.prompt_template_video].get("crop_start", 0)
-        elif inference_args.prompt_template is not None:
-            crop_start = PROMPT_TEMPLATE[inference_args.prompt_template].get("crop_start", 0)
-        else:
-            crop_start = 0
-        max_length = inference_args.text_len + crop_start
-
-        # prompt_template
-        prompt_template = (PROMPT_TEMPLATE[inference_args.prompt_template] if inference_args.prompt_template is not None else None)
-
-        # prompt_template_video
-        prompt_template_video = (PROMPT_TEMPLATE[inference_args.prompt_template_video]
-                                 if inference_args.prompt_template_video is not None else None)
-
-        text_encoder = TextEncoder(
-            text_encoder_type=inference_args.text_encoder,
-            max_length=max_length,
-            text_encoder_precision=inference_args.text_encoder_precision,
-            tokenizer_type=inference_args.tokenizer,
-            prompt_template=prompt_template,
-            prompt_template_video=prompt_template_video,
-            hidden_state_skip_layer=inference_args.hidden_state_skip_layer,
-            apply_final_norm=inference_args.apply_final_norm,
-            reproduce=inference_args.reproduce,
-            logger=logger,
-            device=self.device if not inference_args.use_cpu_offload else "cpu",
-        )
-        text_encoder_2 = None
-        if inference_args.text_encoder_2 is not None:
-            text_encoder_2 = TextEncoder(
-                text_encoder_type=inference_args.text_encoder_2,
-                max_length=inference_args.text_len_2,
-                text_encoder_precision=inference_args.text_encoder_precision_2,
-                tokenizer_type=inference_args.tokenizer_2,
-                reproduce=inference_args.reproduce,
-                logger=logger,
-                device=self.device if not inference_args.use_cpu_offload else "cpu",
-            )
-        modules["text_encoder"] = text_encoder
-        modules["text_encoder_2"] = text_encoder_2
 
     def initialize_encoders_v1(self, modules: Dict[str, Any], inference_args: InferenceArgs):
         """
@@ -110,21 +62,17 @@ class HunyuanVideoPipeline(ComposedPipelineBase):
         modules. Will add the TextEncoder or ImageEncoder to the modules.
         """
         from fastvideo.v1.models.text_encoder import TextEncoder
-        if inference_args.prompt_template_video is not None:
-            crop_start = PROMPT_TEMPLATE[inference_args.prompt_template_video].get("crop_start", 0)
-        elif inference_args.prompt_template is not None:
-            crop_start = PROMPT_TEMPLATE[inference_args.prompt_template].get("crop_start", 0)
-        else:
-            crop_start = 0
+
+        crop_start = PROMPT_TEMPLATE["video"].get("crop_start", 0)
+
 
         max_length = inference_args.text_len + crop_start
 
         # prompt_template
-        prompt_template = (PROMPT_TEMPLATE[inference_args.prompt_template] if inference_args.prompt_template is not None else None)
+        prompt_template = PROMPT_TEMPLATE["image"]
 
         # prompt_template_video
-        prompt_template_video = (PROMPT_TEMPLATE[inference_args.prompt_template_video]
-                                 if inference_args.prompt_template_video is not None else None)
+        prompt_template_video = PROMPT_TEMPLATE["video"]
 
         encoder_1 = modules.pop("text_encoder")
         assert encoder_1 is not None, "Text encoder is not found"
@@ -144,8 +92,7 @@ class HunyuanVideoPipeline(ComposedPipelineBase):
             prompt_template=prompt_template,
             prompt_template_video=prompt_template_video,
             hidden_state_skip_layer=inference_args.hidden_state_skip_layer,
-            apply_final_norm=inference_args.apply_final_norm,
-            reproduce=inference_args.reproduce,
+            apply_final_norm=False,
             device=inference_args.device if not inference_args.use_cpu_offload else "cpu",
         )
 
@@ -164,7 +111,6 @@ class HunyuanVideoPipeline(ComposedPipelineBase):
             # text_encoder_type="text_encoder_2",
             max_length=inference_args.text_len_2,
             # text_encoder_precision=inference_args.text_encoder_precision,
-            reproduce=inference_args.reproduce,
             device=inference_args.device if not inference_args.use_cpu_offload else "cpu",
         )
         modules["text_encoder"] = text_encoder
@@ -205,16 +151,11 @@ class HunyuanVideoPipeline(ComposedPipelineBase):
         inference_args.num_channels_latents = num_channels_latents
 
 
-
+    # TODO
     def adjust_video_length(self, batch: ForwardBatch, inference_args: InferenceArgs):
         """Adjust video length based on VAE version"""
         video_length = batch.num_frames
-        vae_ver = inference_args.vae
-        logger.info(f"Adjusting video length for VAE version: {vae_ver}")
-        if "884" in vae_ver:
-            batch.num_frames = (video_length - 1) // 4 + 1
-        elif "888" in vae_ver:
-            batch.num_frames = (video_length - 1) // 8 + 1
+        batch.num_frames = (video_length - 1) // 4 + 1
         return batch
 
     
