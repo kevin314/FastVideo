@@ -1,5 +1,4 @@
 # SPDX-License-Identifier: Apache-2.0
-
 """
 Inference module for diffusion models.
 
@@ -12,12 +11,11 @@ import torch
 from typing import Any, Dict
 
 from fastvideo.v1.inference_args import InferenceArgs
-from fastvideo.v1.pipelines import ComposedPipelineBase, build_pipeline
-from fastvideo.v1.pipelines.pipeline_batch_info import ForwardBatch
+from fastvideo.v1.pipelines import ForwardBatch
 from fastvideo.v1.logger import init_logger
 # TODO(will): remove, check if this is hunyuan specific
 from fastvideo.v1.utils import align_to
-# TODO(will): remove, move this to hunyuan stage
+from fastvideo.v1.pipelines import ComposedPipelineBase, build_pipeline
 
 logger = init_logger(__name__)
 
@@ -42,6 +40,7 @@ class InferenceEngine:
         """
         self.pipeline = pipeline
         self.inference_args = inference_args
+
     @classmethod
     def create_engine(
         cls,
@@ -118,7 +117,6 @@ class InferenceEngine:
         if (video_length - 1) % 4 != 0:
             raise ValueError(
                 f"`video_length-1` must be a multiple of 4, got {video_length}")
-
 
         target_height = align_to(height, 16)
         target_width = align_to(width, 16)

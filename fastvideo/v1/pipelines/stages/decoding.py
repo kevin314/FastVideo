@@ -1,15 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
-
 """
 Decoding stage for diffusion pipelines.
 """
 
 import torch
-from fastvideo.v1.pipelines.stages.base import PipelineStage
-from fastvideo.v1.pipelines.pipeline_batch_info import ForwardBatch
+
 from fastvideo.v1.inference_args import InferenceArgs
-from fastvideo.v1.utils import PRECISION_TO_TYPE
 from fastvideo.v1.logger import init_logger
+from fastvideo.v1.utils import PRECISION_TO_TYPE
+
+from ..pipeline_batch_info import ForwardBatch
+from .base import PipelineStage
 
 logger = init_logger(__name__)
 
@@ -23,7 +24,6 @@ class DecodingStage(PipelineStage):
     """
 
     def __init__(self, vae):
-        super().__init__()
         self.vae = vae
 
     def forward(

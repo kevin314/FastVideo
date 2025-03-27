@@ -1,28 +1,27 @@
 # SPDX-License-Identifier: Apache-2.0
-
 """
 Base class for composed pipelines.
 
 This module defines the base class for pipelines that are composed of multiple stages.
 """
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import Any, Dict, List, Union
-import torch
-import numpy as np
-from copy import deepcopy
 import os
+from abc import ABC, abstractmethod
+from copy import deepcopy
+from typing import Any, Dict, List, Optional
 
-from fastvideo.v1.pipelines.pipeline_batch_info import ForwardBatch
+import torch
+
 from fastvideo.v1.inference_args import InferenceArgs
-from fastvideo.v1.pipelines.stages import PipelineStage
 from fastvideo.v1.logger import init_logger
-from fastvideo.v1.utils import maybe_download_model, verify_model_config_and_directory
 from fastvideo.v1.models.loader.component_loader import PipelineComponentLoader
+from fastvideo.v1.utils import (maybe_download_model,
+                                verify_model_config_and_directory)
+
+from .pipeline_batch_info import ForwardBatch
+from .stages import PipelineStage
 
 logger = init_logger(__name__)
-
 
 
 class ComposedPipelineBase(ABC):
@@ -35,35 +34,40 @@ class ComposedPipelineBase(ABC):
     """
 
     is_video_pipeline: bool = False  # To be overridden by video pipelines
+    _required_config_modules: List[str] = []
 
     # TODO(will): args should support both inference args and training args
     def __init__(self,
                  model_path: str,
                  inference_args: InferenceArgs,
-                 config: Dict[str, Any] = None):
+                 config: Optional[Dict[str, Any]] = None):
         """
         Initialize the pipeline. After __init__, the pipeline should be ready to
         use. The pipeline should be stateless and not hold any batch state.
         """
         self.model_path = model_path
-        self._stages = []
-        self._stage_name_mapping = {}
+        self._stages: List[PipelineStage] = []
+        self._stage_name_mapping: Dict[str, PipelineStage] = {}
+
+        if self._required_config_modules is None:
+            raise NotImplementedError(
+                "Subclass must set _required_config_modules")
 
         if config is None:
             # Load configuration
-            logger.info(f"Loading pipeline configuration...")
+            logger.info("Loading pipeline configuration...")
             self.config = self._load_config(model_path)
         else:
             self.config = config
 
         # Load modules directly in initialization
-        logger.info(f"Loading pipeline modules...")
+        logger.info("Loading pipeline modules...")
         self.modules = self.load_modules(inference_args)
         print(f"keys: {self.modules.keys()}")
 
         self.initialize_pipeline(inference_args)
 
-        logger.info(f"Creating pipeline stages...")
+        logger.info("Creating pipeline stages...")
         self.create_pipeline_stages(inference_args)
 
     def get_module(self, module_name: str) -> Any:
@@ -79,7 +83,6 @@ class ComposedPipelineBase(ABC):
         logger.info(f"Model path: {model_path}")
         config = verify_model_config_and_directory(model_path)
         return config
-
 
     @property
     def required_config_modules(self) -> List[str]:
@@ -97,11 +100,7 @@ class ComposedPipelineBase(ABC):
             def required_config_modules(self):
                 return self._required_config_modules
         """
-        try:
-            return self._required_config_modules
-        except AttributeError:
-            raise NotImplementedError("Subclass must implement _required_config_modules")
-    
+        return self._required_config_modules
 
     @property
     def stages(self) -> List[PipelineStage]:
@@ -109,14 +108,20 @@ class ComposedPipelineBase(ABC):
         List of stages in the pipeline.
         """
         return self._stages
+
     @abstractmethod
     def create_pipeline_stages(self, inference_args: InferenceArgs):
         """
         Create the pipeline stages.
         """
         raise NotImplementedError
-    
-    
+
+    def initialize_pipeline(self, inference_args: InferenceArgs):
+        """
+        Initialize the pipeline.
+        """
+        ...
+
     def load_modules(self, inference_args: InferenceArgs) -> Dict[str, Any]:
         """
         Load the modules from the config.
@@ -140,7 +145,7 @@ class ComposedPipelineBase(ABC):
             if module_name not in modules_config:
                 raise ValueError(
                     f"model_index.json must contain a {module_name} module")
-        logger.info(f"Diffusers config passed sanity checks")
+        logger.info("Diffusers config passed sanity checks")
 
         # all the component models used by the pipeline
         modules = {}

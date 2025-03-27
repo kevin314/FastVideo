@@ -1,5 +1,4 @@
 # SPDX-License-Identifier: Apache-2.0
-
 """
 Timestep preparation stages for diffusion pipelines.
 
@@ -8,10 +7,11 @@ This module contains implementations of timestep preparation stages for diffusio
 
 import inspect
 
-from fastvideo.v1.pipelines.pipeline_batch_info import ForwardBatch
 from fastvideo.v1.inference_args import InferenceArgs
-from fastvideo.v1.pipelines.stages.base import PipelineStage
 from fastvideo.v1.logger import init_logger
+
+from ..pipeline_batch_info import ForwardBatch
+from .base import PipelineStage
 
 logger = init_logger(__name__)
 
@@ -73,7 +73,6 @@ class TimestepPreparationStage(PipelineStage):
                                     device=device,
                                     **extra_set_timesteps_kwargs)
             timesteps = scheduler.timesteps
-            num_inference_steps = len(timesteps)
         elif sigmas is not None:
             accept_sigmas = "sigmas" in inspect.signature(
                 scheduler.set_timesteps).parameters
@@ -86,7 +85,6 @@ class TimestepPreparationStage(PipelineStage):
                                     device=device,
                                     **extra_set_timesteps_kwargs)
             timesteps = scheduler.timesteps
-            num_inference_steps = len(timesteps)
         else:
             scheduler.set_timesteps(num_inference_steps,
                                     device=device,
@@ -95,6 +93,5 @@ class TimestepPreparationStage(PipelineStage):
 
         # Update batch with prepared timesteps
         batch.timesteps = timesteps
-        batch.num_inference_steps = num_inference_steps
 
         return batch

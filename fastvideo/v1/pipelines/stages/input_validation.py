@@ -1,17 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
-
 """
 Input validation stage for diffusion pipelines.
 """
 
-from typing import Optional, Union, List
 import torch
 
-from fastvideo.v1.pipelines.stages.base import PipelineStage
-from fastvideo.v1.pipelines.pipeline_batch_info import ForwardBatch
 from fastvideo.v1.inference_args import InferenceArgs
 from fastvideo.v1.logger import init_logger
-import random
+
+from ..pipeline_batch_info import ForwardBatch
+from .base import PipelineStage
 
 logger = init_logger(__name__)
 
@@ -67,6 +65,10 @@ class InputValidationStage(PipelineStage):
                     "`negative_prompt_embeds` must be provided")
 
         # Validate height and width
+        if batch.height is None or batch.width is None:
+            raise ValueError(
+                "Height and width must be provided. Please set `height` and `width`."
+            )
         if batch.height % 8 != 0 or batch.width % 8 != 0:
             raise ValueError(
                 f"Height and width must be divisible by 8 but are {batch.height} and {batch.width}."

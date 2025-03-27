@@ -1,19 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
-
 """
 Diffusion pipelines for fastvideo.v1.
 
 This package contains diffusion pipelines for generating videos and images.
 """
-from typing import Dict, Type, Any
+from typing import Any, Dict, Type
 
-from fastvideo.v1.pipelines.pipeline_registry import PipelineRegistry
 from fastvideo.v1.inference_args import InferenceArgs
 from fastvideo.v1.logger import init_logger
-from fastvideo.v1.pipelines.composed_pipeline_base import (
-    ComposedPipelineBase)
+from fastvideo.v1.utils import (maybe_download_model,
+                                verify_model_config_and_directory)
 
-from fastvideo.v1.utils import maybe_download_model, verify_model_config_and_directory
+from .composed_pipeline_base import ComposedPipelineBase
+from .pipeline_batch_info import ForwardBatch
+from .pipeline_registry import PipelineRegistry
 
 logger = init_logger(__name__)
 
@@ -43,24 +43,17 @@ def build_pipeline(inference_args: InferenceArgs) -> ComposedPipelineBase:
         pipeline_architecture)
 
     # instantiate the pipeline
-    pipeline = pipeline_cls(model_path, inference_args)
-    logger.info(f"Pipeline instantiated")
+    pipeline = pipeline_cls(model_path, inference_args, config)
+    logger.info("Pipeline instantiated")
 
     # pipeline is now initialized and ready to use
     return pipeline
 
 
-def list_available_pipelines() -> Dict[str, Type[Any]]:
-    """
-    List all available pipeline types.
-    
-    Returns:
-        A dictionary of pipeline names to pipeline classes.
-    """
-    return PipelineRegistry.list()
-
-
 __all__ = [
     "build_pipeline",
     "list_available_pipelines",
-    "ComposedPipelineBase",]
+    "ComposedPipelineBase",
+    "PipelineRegistry",
+    "ForwardBatch",
+]

@@ -1,23 +1,26 @@
 # SPDX-License-Identifier: Apache-2.0
-
 """
 Denoising stage for diffusion pipelines.
 """
 
 import inspect
-import torch
-from tqdm.auto import tqdm
-from einops import rearrange
 
-from fastvideo.v1.pipelines.stages.base import PipelineStage
-from fastvideo.v1.pipelines.pipeline_batch_info import ForwardBatch
-from fastvideo.v1.inference_args import InferenceArgs
-from fastvideo.v1.utils import PRECISION_TO_TYPE
+import torch
+from einops import rearrange
+from tqdm.auto import tqdm
+
 # TODO(will-refactor): change this to fastvideo.distributed
-from fastvideo.v1.distributed import get_sequence_model_parallel_world_size, get_sequence_model_parallel_rank
-from fastvideo.v1.distributed.communication_op import sequence_model_parallel_all_gather
-from fastvideo.v1.logger import init_logger
+from fastvideo.v1.distributed import (get_sequence_model_parallel_rank,
+                                      get_sequence_model_parallel_world_size)
+from fastvideo.v1.distributed.communication_op import (
+    sequence_model_parallel_all_gather)
 from fastvideo.v1.forward_context import set_forward_context
+from fastvideo.v1.inference_args import InferenceArgs
+from fastvideo.v1.logger import init_logger
+from fastvideo.v1.utils import PRECISION_TO_TYPE
+
+from ..pipeline_batch_info import ForwardBatch
+from .base import PipelineStage
 
 logger = init_logger(__name__)
 
@@ -92,11 +95,10 @@ class DenoisingStage(PipelineStage):
                 result[t][l][h] = value
             return result
 
-        
         # Get latents and embeddings
         latents = batch.latents
         prompt_embeds = batch.prompt_embeds
-        
+
         # Run denoising loop
         with self.progress_bar(total=num_inference_steps) as progress_bar:
             for i, t in enumerate(timesteps):
@@ -122,7 +124,9 @@ class DenoisingStage(PipelineStage):
                                    is not None else None)
 
                 # Predict noise residual
-                with torch.autocast(device_type="cuda", dtype=target_dtype, enabled=autocast_enabled):
+                with torch.autocast(device_type="cuda",
+                                    dtype=target_dtype,
+                                    enabled=autocast_enabled):
                     # TODO(will): finalize the interface
                     with set_forward_context(num_step=i,
                                              inference_args=inference_args):
