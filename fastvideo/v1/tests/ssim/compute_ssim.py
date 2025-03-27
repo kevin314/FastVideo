@@ -49,7 +49,15 @@ def compute_video_ssim_torchvision(video1_path, video2_path, use_ms_ssim=True):
 
     if ssim_values:
         mean_ssim = np.mean(ssim_values)
-        print(f"Mean SSIM: {mean_ssim}")
+        min_ssim = np.min(ssim_values)
+        max_ssim = np.max(ssim_values)
+        min_frame_idx = np.argmin(ssim_values)
+        max_frame_idx = np.argmax(ssim_values)
+        
+        print(f"Mean SSIM: {mean_ssim:.4f}")
+        print(f"Min SSIM: {min_ssim:.4f} (at frame {min_frame_idx})")
+        print(f"Max SSIM: {max_ssim:.4f} (at frame {max_frame_idx})")
+        
         return mean_ssim
     else:
         print('No SSIM values calculated')
