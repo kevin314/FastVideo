@@ -46,7 +46,7 @@ TEST_PROMPTS = [
 ]
 
 
-def write_ssim_results(output_dir, test_name, ssim_value, reference_path, generated_path):
+def write_ssim_results(output_dir, ssim_values, reference_path, generated_path, num_inference_steps, prompt):
     """
     Write SSIM results to a JSON file in the same directory as the generated videos.
     """
@@ -61,24 +61,25 @@ def write_ssim_results(output_dir, test_name, ssim_value, reference_path, genera
         if not os.access(output_dir, os.W_OK):
             print(f"WARNING: Output directory is not writable: {output_dir}")
 
-        # Create a timestamp for the result
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        # Unpack SSIM values
+        mean_ssim, min_ssim, max_ssim = ssim_values
 
         # Create a result object
         result = {
-            "test_name": test_name,
-            "timestamp": timestamp,
-            "ssim_value": ssim_value,
+            "mean_ssim": mean_ssim,
+            "min_ssim": min_ssim,
+            "max_ssim": max_ssim,
             "reference_video": reference_path,
             "generated_video": generated_path,
             "parameters": {
-                "num_inference_steps": int(test_name.split('_')[0].replace('steps', '')),
-                "prompt": test_name.split('_', 1)[1] if '_' in test_name else "unknown"
+                "num_inference_steps": num_inference_steps,
+                "prompt": prompt
             }
         }
 
-        # Write to a file named after the test
-        result_file = os.path.join(output_dir, f"{test_name}_{timestamp}_ssim.json")
+        # Write to a file named after the parameters
+        test_name = f"steps{num_inference_steps}_{prompt[:100]}"
+        result_file = os.path.join(output_dir, f"{test_name}_ssim.json")
         print(f"Writing JSON results to: {result_file}")
         with open(result_file, 'w') as f:
             json.dump(result, f, indent=2)
@@ -92,23 +93,13 @@ def write_ssim_results(output_dir, test_name, ssim_value, reference_path, genera
         return False
 
 # Parameters to vary in the tests
-@pytest.mark.parametrize("num_inference_steps", [6])
+@pytest.mark.parametrize("num_inference_steps", [5])
 @pytest.mark.parametrize("prompt", TEST_PROMPTS)
-def test_inference_similarity(num_inference_steps, prompt, request):
+def test_inference_similarity(num_inference_steps, prompt):
     """
     Test that runs inference with different parameters and compares the output
     to reference videos using SSIM.
     """
-    # Check if specific test parameters were passed via environment variables
-    env_steps = os.environ.get("TEST_INFERENCE_STEPS")
-    env_prompt = os.environ.get("TEST_PROMPT")
-
-    # If environment variables are set, only run the matching test case
-    if env_steps and env_prompt:
-        if int(env_steps) != num_inference_steps or env_prompt != prompt:
-            pytest.skip(f"Skipping test case that doesn't match environment parameters")
-  
-    # Get the directory where this script is located
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
     base_output_dir = os.path.join(script_dir, 'generated_videos')
@@ -169,89 +160,30 @@ def test_inference_similarity(num_inference_steps, prompt, request):
     generated_video_path = os.path.join(output_dir, output_video_name)
 
     print(f"Computing SSIM between {reference_video_path} and {output_dir}")
-    ssim_value = compute_video_ssim_torchvision(
+    ssim_values = compute_video_ssim_torchvision(
         reference_video_path, 
         generated_video_path, 
         use_ms_ssim=True
     )
 
-    print(f"SSIM computation complete, value: {ssim_value}")
+    mean_ssim = ssim_values[0]  # Extract mean SSIM for assertions
+    print(f"SSIM computation complete, mean value: {mean_ssim}")
     print(f"Writing SSIM results to directory: {output_dir}")
 
     success = write_ssim_results(
         output_dir,
-        test_name,
-        ssim_value,
+        ssim_values,
         reference_video_path,
-        generated_video_path
+        generated_video_path,
+        num_inference_steps,
+        prompt
     )
 
     if not success:
         print("WARNING: Failed to write SSIM results to file")
 
-    min_acceptable_ssim = 0.70
-    assert ssim_value >= min_acceptable_ssim, f"SSIM value {ssim_value} is below threshold {min_acceptable_ssim}"
+    min_acceptable_ssim = 0.90
+    assert mean_ssim >= min_acceptable_ssim, f"SSIM value {mean_ssim} is below threshold {min_acceptable_ssim}"
 
-    print(f"SSIM for {test_name}: {ssim_value}")
+    print(f"SSIM for {test_name}: {mean_ssim}")
 
-def compare():
-    prompt="Will Smith casually eats noodles, his relaxed demeanor contrasting with the energetic background of a bustling street food market. The scene captures a mix of humor and authenticity. Mid-shot framing, vibrant lighting."
-    test_name = f"steps4_{prompt[:100]}"
-
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-
-    base_output_dir = os.path.join(script_dir, 'generated_videos')
-    output_dir = os.path.join(base_output_dir, f'num_inference_steps=4')
-    output_video_name = f"{prompt[:100]}.mp4"
-
-
-     # Check if the output video was generated
-    assert os.path.exists(output_dir), f"Output video was not generated at {output_dir}"
-    
-    # Define path to the reference video folder
-    reference_folder = os.path.join(script_dir, 'reference_videos')
-
-    # Find the matching reference video based on the prompt
-    # The reference video should have the same prompt identifier
-    reference_video_name = None
-    for filename in os.listdir(reference_folder):
-        print('filename!', filename)
-        print()
-        if filename.endswith('.mp4') and prompt[:100] in filename:
-            reference_video_name = filename
-            break
-    
-    if not reference_video_name:
-        pytest.skip(f"No reference video found for prompt: {prompt}")
-    
-    reference_video_path = os.path.join(reference_folder, reference_video_name)
-    generated_video_path = os.path.join(output_dir, output_video_name)
-    # Compute SSIM between generated and reference videos
-    print(f"Computing SSIM between {reference_video_path} and {output_dir}")
-    ssim_value = compute_video_ssim_torchvision(
-        reference_video_path, 
-        generated_video_path, 
-        use_ms_ssim=True
-    )
-
-    print(f"SSIM computation complete, value: {ssim_value}")
-    print(f"Writing SSIM results to directory: {output_dir}")
-
-    # Write SSIM results to file
-    success = write_ssim_results(
-        output_dir,
-        test_name,
-        ssim_value,
-        reference_video_path,
-        generated_video_path
-    )
-
-    if not success:
-        print("WARNING: Failed to write SSIM results to file")
-    
-    # Assert that SSIM is above a threshold
-    min_acceptable_ssim = 0.70
-    assert ssim_value >= min_acceptable_ssim, f"SSIM value {ssim_value} is below threshold {min_acceptable_ssim}"
-    
-    # Print the SSIM value for reference
-    print(f"SSIM for {test_name}: {ssim_value}")
