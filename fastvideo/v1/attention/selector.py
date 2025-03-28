@@ -9,10 +9,11 @@ from typing import Generator, Optional, Type
 import torch
 
 import fastvideo.v1.envs as envs
-from fastvideo.v1.attention.backends.abstract import AttentionBackend
 from fastvideo.v1.logger import init_logger
 from fastvideo.v1.platforms import _Backend, current_platform
-from fastvideo.v1.utils import (STR_BACKEND_ENV_VAR, resolve_obj_by_qualname)
+from fastvideo.v1.utils import STR_BACKEND_ENV_VAR, resolve_obj_by_qualname
+
+from .backends.abstract import AttentionBackend
 
 logger = init_logger(__name__)
 
@@ -82,6 +83,7 @@ def get_global_forced_attn_backend() -> Optional[_Backend]:
 def get_attn_backend(
     head_size: int,
     dtype: torch.dtype,
+    distributed: bool,
 ) -> Type[AttentionBackend]:
     """Selects which attention backend to use and lazily imports it."""
     # Accessing envs.* behind an @lru_cache decorator can cause the wrong
@@ -91,6 +93,7 @@ def get_attn_backend(
     return _cached_get_attn_backend(
         head_size=head_size,
         dtype=dtype,
+        distributed=distributed,
     )
 
 
@@ -98,6 +101,7 @@ def get_attn_backend(
 def _cached_get_attn_backend(
     head_size: int,
     dtype: torch.dtype,
+    distributed: bool,
 ) -> Type[AttentionBackend]:
     # Check whether a particular choice of backend was
     # previously forced.
@@ -117,7 +121,7 @@ def _cached_get_attn_backend(
 
     # get device-specific attn_backend
     attention_cls = current_platform.get_attn_backend_cls(
-        selected_backend, head_size, dtype)
+        selected_backend, head_size, dtype, distributed)
     if not attention_cls:
         raise ValueError(
             f"Invalid attention backend for {current_platform.device_name}")

@@ -7,9 +7,8 @@ from einops import rearrange
 
 import fastvideo.v1.envs as envs
 from fastvideo.v1.distributed import get_sp_group
-from fastvideo.v1.attention.backends.abstract import (
-    AttentionBackend, AttentionImpl, AttentionLayer, AttentionMetadata,
-    AttentionMetadataBuilder, AttentionType)
+
+from .abstract import AttentionImpl, AttentionLayer
 
 
 class SlidingTileAttentionImpl(AttentionImpl):
@@ -27,7 +26,7 @@ class SlidingTileAttentionImpl(AttentionImpl):
             raise ValueError("FASTVIDEO_ATTENTION_CONFIG is not set")
 
         try:
-            with open(config_file, "r") as f:
+            with open(config_file) as f:
                 config = json.load(f)
         except FileNotFoundError:
             raise ValueError(

@@ -37,7 +37,7 @@ class InferenceArgs:
     # Model configuration
     precision: str = "bf16"
 
-    # VAE configurationi
+    # VAE configuration
     vae_precision: str = "fp16"
     vae_tiling: bool = True
     vae_sp: bool = False
@@ -335,6 +335,7 @@ class InferenceArgs:
             help=
             "Disable autocast for denoising loop and vae decoding in pipeline sampling",
         )
+        
 
         # Logging
         parser.add_argument(

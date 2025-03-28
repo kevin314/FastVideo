@@ -1,12 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Optional
+
 import torch
 import torch.nn as nn
-from typing import Optional
-from fastvideo.v1.attention.selector import backend_name_to_enum, get_attn_backend
+
+from fastvideo.v1.distributed.communication_op import (
+    sequence_model_parallel_all_gather, sequence_model_parallel_all_to_all_4D)
+from fastvideo.v1.distributed.parallel_state import (
+    get_sequence_model_parallel_rank, get_sequence_model_parallel_world_size)
 from fastvideo.v1.forward_context import ForwardContext, get_forward_context
-from fastvideo.v1.distributed.communication_op import sequence_model_parallel_all_to_all_4D, sequence_model_parallel_all_gather
-from fastvideo.v1.distributed.parallel_state import get_sequence_model_parallel_rank, get_sequence_model_parallel_world_size
+
+from .selector import backend_name_to_enum, get_attn_backend
 
 
 class DistributedAttention(nn.Module):
@@ -29,7 +34,7 @@ class DistributedAttention(nn.Module):
             num_kv_heads = num_heads
 
         dtype = torch.get_default_dtype()
-        attn_backend = get_attn_backend(head_size, dtype)
+        attn_backend = get_attn_backend(head_size, dtype, distributed=True)
         impl_cls = attn_backend.get_impl_cls()
         self.impl = impl_cls(num_heads=num_heads,
                              head_size=head_size,
@@ -49,9 +54,6 @@ class DistributedAttention(nn.Module):
         q: torch.Tensor,
         k: torch.Tensor,
         v: torch.Tensor,
-        # TODO(will): why is this arg not used in vllm? We probably don't need
-        # this
-        # attn_metadata: AttentionMetadata,
         replicated_q: Optional[torch.Tensor] = None,
         replicated_k: Optional[torch.Tensor] = None,
         replicated_v: Optional[torch.Tensor] = None,
@@ -92,6 +94,9 @@ class DistributedAttention(nn.Module):
                                                     scatter_dim=2,
                                                     gather_dim=1)
 
+        # Apply backend-specific preprocess_qkv
+        qkv = self.impl.preprocess_qkv(qkv, ctx_attn_metadata)
+
         # Concatenate with replicated QKV if provided
         if replicated_q is not None:
             assert replicated_k is not None and replicated_v is not None
@@ -116,6 +121,10 @@ class DistributedAttention(nn.Module):
             # TODO: make this asynchronous
             replicated_output = sequence_model_parallel_all_gather(
                 replicated_output, dim=2)
+
+        # Apply backend-specific postprocess_output
+        output = self.impl.postprocess_output(output, ctx_attn_metadata)
+
         output = sequence_model_parallel_all_to_all_4D(output,
                                                        scatter_dim=1,
                                                        gather_dim=2)
@@ -142,7 +151,7 @@ class LocalAttention(nn.Module):
             num_kv_heads = num_heads
 
         dtype = torch.get_default_dtype()
-        attn_backend = get_attn_backend(head_size, dtype)
+        attn_backend = get_attn_backend(head_size, dtype, distributed=False)
         impl_cls = attn_backend.get_impl_cls()
         self.impl = impl_cls(num_heads=num_heads,
                              head_size=head_size,
@@ -162,7 +171,6 @@ class LocalAttention(nn.Module):
         q: torch.Tensor,
         k: torch.Tensor,
         v: torch.Tensor,
-        # attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
         """
         Apply local attention between query, key and value tensors.

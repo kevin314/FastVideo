@@ -1,17 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import List, Optional, Type
+
 import torch
-from typing import Optional, List, Tuple, Type
-
-from fastvideo.v1.attention.backends.abstract import (
-    AttentionImpl,
-    AttentionBackend,
-    AttentionMetadata,
-    # FlashAttentionMetadata,
-)
-
 from flash_attn import flash_attn_func
+
 from fastvideo.v1.logger import init_logger
+
+from .abstract import (AttentionBackend, AttentionImpl, AttentionMetadata,
+                       AttentionMetadataBuilder)
 
 logger = init_logger(__name__)
 
@@ -32,9 +29,13 @@ class FlashAttentionBackend(AttentionBackend):
     def get_impl_cls() -> Type["FlashAttentionImpl"]:
         return FlashAttentionImpl
 
-    # @staticmethod
-    # def get_metadata_cls() -> Type["AttentionMetadata"]:
-    #     return FlashAttentionMetadata
+    @staticmethod
+    def get_metadata_cls() -> Type["AttentionMetadata"]:
+        return None
+
+    @staticmethod
+    def get_builder_cls() -> Type["AttentionMetadataBuilder"]:
+        return None
 
 
 class FlashAttentionImpl(AttentionImpl):
@@ -58,6 +59,9 @@ class FlashAttentionImpl(AttentionImpl):
         key: torch.Tensor,
         value: torch.Tensor,
         attn_metadata: AttentionMetadata,
+        replicated_q: Optional[torch.Tensor] = None,
+        replicated_k: Optional[torch.Tensor] = None,
+        replicated_v: Optional[torch.Tensor] = None,
     ):
         output = flash_attn_func(query,
                                  key,

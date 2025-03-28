@@ -1,6 +1,5 @@
-from fastvideo.v1.models.encoders.clip import CLIPTextModel
 # TODO: check if correct
-from fastvideo.models.hunyuan.text_encoder import TextEncoder, load_text_encoder, load_tokenizer
+from fastvideo.models.hunyuan.text_encoder import  load_text_encoder, load_tokenizer
 import os
 import torch
 import torch.nn as nn
@@ -10,7 +9,7 @@ from fastvideo.v1.logger import init_logger
 from transformers import AutoConfig
 from fastvideo.v1.distributed import init_distributed_environment, initialize_model_parallel
 # from fastvideo.v1.models.hunyuan.text_encoder import load_text_encoder, load_tokenizer
-
+from fastvideo.v1.forward_context import set_forward_context
 logger = init_logger(__name__)
 
 
@@ -151,25 +150,26 @@ def test_clip_encoder():
             logger.info(f"Testing prompt: '{prompt}'")
 
             # Tokenize the prompt
-            tokens = tokenizer(prompt,
-                               padding="max_length",
-                               max_length=77,
-                               truncation=True,
-                               return_tensors="pt").to(device)
-
+            tokens = tokenizer(
+                prompt,
+                return_tensors="pt"
+            ).to(device)
             # Get embeddings from our implementation
-            outputs1 = model1(input_ids=tokens.input_ids,
-                              attention_mask=tokens.attention_mask,
-                              output_hidden_states=True)
-
-            logger.info(f"Testing model2")
-
-            # Get embeddings from HuggingFace implementation
-            outputs2 = model2(
+            outputs1 = model1(
                 input_ids=tokens.input_ids,
-                # attention_mask=tokens.attention_mask,
-                output_hidden_states=True)
-
+                output_hidden_states=True
+            )
+    
+            logger.info(f"Testing model2")
+            print("--------------------------------")
+            # Get embeddings from HuggingFace implementation
+            with set_forward_context(current_timestep=0, attn_metadata=None):
+                outputs2 = model2(
+                    input_ids=tokens.input_ids,
+                    # attention_mask=tokens.attention_mask,
+                    output_hidden_states=True
+                )
+            
             # Compare last hidden states
             last_hidden_state1 = outputs1.last_hidden_state[
                 tokens.attention_mask == 1]

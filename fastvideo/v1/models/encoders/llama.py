@@ -191,8 +191,7 @@ class LlamaAttention(nn.Module):
         # import pdb; pdb.set_trace()
         # attn_output = flash_attn_func(q, k, v, softmax_scale=self.scaling, causal=True)
         attn_output = self.attn(q, k, v)
-        attn_output = attn_output.reshape(batch_size, seq_len,
-                                          self.num_heads * self.head_dim)
+        attn_output = attn_output.reshape(batch_size, seq_len, self.num_heads * self.head_dim)
 
         output, _ = self.o_proj(attn_output)
         return output
@@ -339,9 +338,7 @@ class LlamaModel(nn.Module):
         for layer in self.layers:
             if output_hidden_states:
                 # TODO
-                all_hidden_states += (
-                    hidden_states, ) if residual is None else (hidden_states +
-                                                               residual, )
+                all_hidden_states += (hidden_states,) if residual is None else (hidden_states + residual,)
             hidden_states, residual = layer(positions, hidden_states, residual)
 
         hidden_states, _ = self.norm(hidden_states, residual)

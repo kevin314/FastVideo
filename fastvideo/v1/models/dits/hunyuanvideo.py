@@ -149,10 +149,38 @@ class MMDoubleStreamBlock(nn.Module):
         self.txt_mlp_residual = ScaleResidual()
 
         # Text attention components
-        self.txt_attn_qkv = ReplicatedLinear(hidden_size,
-                                             hidden_size * 3,
-                                             bias=True,
-                                             params_dtype=dtype)
+        self.txt_attn_qkv = ReplicatedLinear(
+            hidden_size,
+            hidden_size * 3,
+            bias=True,
+            params_dtype=dtype
+        )
+        
+        # QK norm layers for text
+        self.txt_attn_q_norm = HunyuanRMSNorm(head_dim, eps=1e-6, dtype=dtype) 
+        self.txt_attn_k_norm = HunyuanRMSNorm(head_dim, eps=1e-6, dtype=dtype) 
+            
+        self.txt_attn_proj = ReplicatedLinear(
+            hidden_size,
+            hidden_size,
+            bias=True,
+            params_dtype=dtype
+        )
+        
+        self.txt_mlp = MLP(
+            hidden_size,
+            mlp_hidden_dim,
+            bias=True,
+            dtype=dtype
+        )
+        
+        # Distributed attention
+        self.attn = DistributedAttention(
+            num_heads=num_attention_heads,
+            head_size=head_dim,
+            dropout_rate=0.0,
+            causal=False
+        )
 
         # QK norm layers for text
         self.txt_attn_q_norm = HunyuanRMSNorm(head_dim, eps=1e-6, dtype=dtype)
@@ -324,10 +352,12 @@ class MMSingleStreamBlock(nn.Module):
                                              dtype=dtype)
 
         # Distributed attention
-        self.attn = DistributedAttention(num_heads=num_attention_heads,
-                                         head_size=head_dim,
-                                         dropout_rate=0.0,
-                                         causal=False)
+        self.attn = DistributedAttention(
+            num_heads=num_attention_heads,
+            head_size=head_dim,
+            dropout_rate=0.0,
+            causal=False
+        )
 
     def forward(
         self,
@@ -554,6 +584,8 @@ class HunyuanVideoTransformer3DModel(BaseDiT):
         self.rope_theta = rope_theta
         self.text_states_dim = text_embed_dim
         self.text_states_dim_2 = pooled_projection_dim
+        # TODO(will): hack?
+        self.dtype = dtype
 
         if hidden_size % num_attention_heads != 0:
             raise ValueError(
@@ -837,7 +869,7 @@ class IndividualTokenRefinerBlock(nn.Module):
             num_heads=num_attention_heads,
             head_size=hidden_size // num_attention_heads,
         )
-
+        
     def forward(self, x, c):
         # Get modulation parameters
         gate_msa, gate_mlp = self.adaLN_modulation(c).chunk(2, dim=-1)
