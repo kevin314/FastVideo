@@ -31,11 +31,11 @@ class FlashAttentionBackend(AttentionBackend):
 
     @staticmethod
     def get_metadata_cls() -> Type["AttentionMetadata"]:
-        return None
+        raise NotImplementedError
 
     @staticmethod
     def get_builder_cls() -> Type["AttentionMetadataBuilder"]:
-        return None
+        raise NotImplementedError
 
 
 class FlashAttentionImpl(AttentionImpl):
@@ -59,9 +59,6 @@ class FlashAttentionImpl(AttentionImpl):
         key: torch.Tensor,
         value: torch.Tensor,
         attn_metadata: AttentionMetadata,
-        replicated_q: Optional[torch.Tensor] = None,
-        replicated_k: Optional[torch.Tensor] = None,
-        replicated_v: Optional[torch.Tensor] = None,
     ):
         output = flash_attn_func(query,
                                  key,
