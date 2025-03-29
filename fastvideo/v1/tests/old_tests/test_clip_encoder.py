@@ -3,22 +3,69 @@ from fastvideo.models.hunyuan.text_encoder import  load_text_encoder, load_token
 import os
 import torch
 import torch.nn as nn
+import argparse
 import numpy as np
 from fastvideo.v1.logger import init_logger
 from transformers import AutoConfig
 from fastvideo.v1.distributed import init_distributed_environment, initialize_model_parallel
 # from fastvideo.v1.models.hunyuan.text_encoder import load_text_encoder, load_tokenizer
 from fastvideo.v1.forward_context import set_forward_context
-from fastvideo.v1.utils import maybe_download_model
-from fastvideo.v1.inference_args import InferenceArgs
-
 logger = init_logger(__name__)
 
 
-def test_clip_encoder():
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "12355"
+def initialize_identical_weights(model1, model2, seed=42):
+    """Initialize both models with identical weights using a fixed seed for reproducibility."""
+    # Get all parameters from both models
+    params1 = dict(model1.named_parameters())
+    params2 = dict(model2.named_parameters())
 
+    # Initialize each layer with identical values
+    with torch.no_grad():
+        # Initialize weights
+        for name1, param1 in params1.items():
+            if 'weight' in name1:
+                # Set seed before each weight initialization
+                torch.manual_seed(seed)
+                nn.init.normal_(param1, mean=0.0, std=0.05)
+
+        for name2, param2 in params2.items():
+            if 'weight' in name2:
+                # Reset seed to get same initialization
+                torch.manual_seed(seed)
+                nn.init.normal_(param2, mean=0.0, std=0.05)
+
+        # Initialize biases
+        for name1, param1 in params1.items():
+            if 'bias' in name1:
+                torch.manual_seed(seed)
+                nn.init.normal_(param1, mean=0.0, std=0.05)
+                param1.data = param1.data.to(torch.bfloat16)
+
+        for name2, param2 in params2.items():
+            if 'bias' in name2:
+                torch.manual_seed(seed)
+                nn.init.normal_(param2, mean=0.0, std=0.05)
+                param2.data = param2.data.to(torch.bfloat16)
+
+    logger.info("Both models initialized with identical weights in bfloat16")
+    return model1, model2
+
+
+def setup_args():
+    parser = argparse.ArgumentParser(description='CLIP Text Encoder Test')
+    parser.add_argument('--model-path',
+                        type=str,
+                        default="openai/clip-vit-large-patch14",
+                        help='Path to the CLIP model')
+    parser.add_argument(
+        '--precision',
+        type=str,
+        default="float16",
+        help='Precision to use for the model (float32, float16, bfloat16)')
+    return parser.parse_args()
+
+
+def test_clip_encoder():
     init_distributed_environment(world_size=1,
                                  rank=0,
                                  distributed_init_method="env://",
@@ -27,7 +74,7 @@ def test_clip_encoder():
     initialize_model_parallel(tensor_model_parallel_size=1,
                               sequence_model_parallel_size=1,
                               backend="nccl")
-    args = InferenceArgs(model_path="openai/clip-vit-large-patch14", precision="float16")
+    args = setup_args()
 
     # Set fixed random seed for reproducibility
     torch.manual_seed(42)
@@ -35,10 +82,9 @@ def test_clip_encoder():
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+    # Initialize the two model implementations
     logger.info(f"Loading models from {args.model_path}")
-    model_path = "hunyuanvideo-community/HunyuanVideo"
-    model_path = maybe_download_model(model_path, local_dir=os.path.join("data", model_path))
-    model_path = os.path.join(model_path, "text_encoder_2")
+    model_path = "data/hunyuanvideo-community/HunyuanVideo/text_encoder_2"
 
     # config = json.load(open(os.path.join(model_path, "config.json")))
 
@@ -170,3 +216,12 @@ def test_clip_encoder():
                 f"Hidden states differ significantly: max diff = {max_diff_hidden.item()}"
             assert max_diff_pooler < 1e-4, \
                 f"Pooler outputs differ significantly: max diff = {max_diff_pooler.item()}"
+
+    logger.info(
+        "Test passed! Both CLIP text encoder implementations produce similar outputs."
+    )
+    logger.info("Test completed successfully")
+
+
+if __name__ == "__main__":
+    test_clip_encoder()
