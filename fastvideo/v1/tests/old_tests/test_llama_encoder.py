@@ -2,6 +2,7 @@ from fastvideo.models.hunyuan.text_encoder import  load_text_encoder, load_token
 import os
 import torch
 import torch.nn as nn
+import argparse
 import numpy as np
 from fastvideo.v1.logger import init_logger
 from transformers import AutoConfig
@@ -10,15 +11,62 @@ from fastvideo.v1.models.loader.component_loader import TextEncoderLoader
 from fastvideo.v1.distributed import init_distributed_environment, initialize_model_parallel
 from fastvideo.v1.pipelines.stages import DenoisingStage
 from fastvideo.v1.forward_context import set_forward_context
-from fastvideo.v1.utils import maybe_download_model
-from fastvideo.v1.inference_args import InferenceArgs
-
 logger = init_logger(__name__)
 
-def test_llama_encoder():
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "12355"
 
+def initialize_identical_weights(model1, model2, seed=42):
+    """Initialize both models with identical weights using a fixed seed for reproducibility."""
+    # Get all parameters from both models
+    params1 = dict(model1.named_parameters())
+    params2 = dict(model2.named_parameters())
+
+    # Initialize each layer with identical values
+    with torch.no_grad():
+        # Initialize weights
+        for name1, param1 in params1.items():
+            if 'weight' in name1:
+                # Set seed before each weight initialization
+                torch.manual_seed(seed)
+                nn.init.normal_(param1, mean=0.0, std=0.05)
+
+        for name2, param2 in params2.items():
+            if 'weight' in name2:
+                # Reset seed to get same initialization
+                torch.manual_seed(seed)
+                nn.init.normal_(param2, mean=0.0, std=0.05)
+
+        # Initialize biases
+        for name1, param1 in params1.items():
+            if 'bias' in name1:
+                torch.manual_seed(seed)
+                nn.init.normal_(param1, mean=0.0, std=0.05)
+                param1.data = param1.data.to(torch.bfloat16)
+
+        for name2, param2 in params2.items():
+            if 'bias' in name2:
+                torch.manual_seed(seed)
+                nn.init.normal_(param2, mean=0.0, std=0.05)
+                param2.data = param2.data.to(torch.bfloat16)
+
+    logger.info("Both models initialized with identical weights in bfloat16")
+    return model1, model2
+
+
+def setup_args():
+    parser = argparse.ArgumentParser(description='LLaMA Encoder Test')
+    parser.add_argument('--model-path',
+                        type=str,
+                        default="meta-llama/Llama-2-7b-hf",
+                        help='Path to the LLaMA model')
+    parser.add_argument(
+        '--precision',
+        type=str,
+        default="float16",
+        help='Precision to use for the model (float32, float16, bfloat16)')
+    return parser.parse_args()
+
+
+def test_llama_encoder():
     init_distributed_environment(world_size=1,
                                  rank=0,
                                  distributed_init_method="env://",
@@ -27,7 +75,7 @@ def test_llama_encoder():
     initialize_model_parallel(tensor_model_parallel_size=1,
                               sequence_model_parallel_size=1,
                               backend="nccl")
-    args = InferenceArgs(model_path="meta-llama/Llama-2-7b-hf", precision="float16")
+    args = setup_args()
 
     # Set fixed random seed for reproducibility
     torch.manual_seed(42)
@@ -37,9 +85,8 @@ def test_llama_encoder():
 
     # Initialize the two model implementations
     logger.info(f"Loading models from {args.model_path}")
-    model_path = "hunyuanvideo-community/HunyuanVideo"
-    model_path = maybe_download_model(model_path, local_dir=f'data/{model_path}')
-    model_path = os.path.join(model_path, "text_encoder")
+    model_path = "data/hunyuanvideo-community/HunyuanVideo/text_encoder"
+
     hf_config = AutoConfig.from_pretrained(model_path)
     print(hf_config)
 
@@ -166,3 +213,12 @@ def test_llama_encoder():
             logger.info(
                 f"Mean difference in last hidden states: {mean_diff_hidden.item()}"
             )
+
+    logger.info(
+        "Test passed! Both LLaMA encoder implementations produce similar outputs."
+    )
+    logger.info("Test completed successfully")
+
+
+if __name__ == "__main__":
+    test_llama_encoder()

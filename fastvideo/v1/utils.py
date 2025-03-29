@@ -379,7 +379,7 @@ def import_pynvml():
     return pynvml
 
 
-def maybe_download_model(model_path: str) -> str:
+def maybe_download_model(model_path: str, local_dir: str = None) -> str:
     """
     Check if the model path is a Hugging Face Hub model ID and download it if needed.
     
@@ -403,6 +403,7 @@ def maybe_download_model(model_path: str) -> str:
             local_path = snapshot_download(
                 repo_id=model_path,
                 ignore_patterns=["*.onnx", "*.msgpack"],
+                local_dir=local_dir
             )
         logger.info(f"Downloaded model to {local_path}")
         return local_path
