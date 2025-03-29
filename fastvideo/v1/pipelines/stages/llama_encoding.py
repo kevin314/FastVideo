@@ -5,6 +5,8 @@ Prompt encoding stages for diffusion pipelines.
 This module contains implementations of prompt encoding stages for diffusion pipelines.
 """
 
+from typing import TypedDict
+
 from fastvideo.v1.forward_context import set_forward_context
 from fastvideo.v1.inference_args import InferenceArgs
 from fastvideo.v1.logger import init_logger
@@ -23,7 +25,13 @@ PROMPT_TEMPLATE_ENCODE_VIDEO = (
     "5. camera angles, movements, and transitions used in the video:<|eot_id|>"
     "<|start_header_id|>user<|end_header_id|>\n\n{}<|eot_id|>")
 
-prompt_template_video = {
+
+class PromptTemplate(TypedDict):
+    template: str
+    crop_start: int
+
+
+prompt_template_video: PromptTemplate = {
     "template": PROMPT_TEMPLATE_ENCODE_VIDEO,
     "crop_start": 95,
 }
@@ -37,7 +45,7 @@ class LlamaEncodingStage(PipelineStage):
     expected by the diffusion model.
     """
 
-    def __init__(self, text_encoder, tokenizer):
+    def __init__(self, text_encoder, tokenizer) -> None:
         """
         Initialize the prompt encoding stage.
         

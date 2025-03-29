@@ -39,12 +39,15 @@ class ConditioningStage(PipelineStage):
         """
         if not batch.do_classifier_free_guidance:
             return batch
+        else:
+            raise NotImplementedError(
+                "Classifier-free guidance is not supported yet")
 
-        logger.info(
-            f"batch.negative_prompt_embeds: {batch.negative_prompt_embeds}")
-        logger.info(
-            f"do_classifier_free_guidance: {batch.do_classifier_free_guidance}")
-        logger.info(f"cfg_scale: {batch.guidance_scale}")
+        logger.info("batch.negative_prompt_embeds: %s",
+                    batch.negative_prompt_embeds)
+        logger.info("do_classifier_free_guidance: %s",
+                    batch.do_classifier_free_guidance)
+        logger.info("cfg_scale: %s", batch.guidance_scale)
 
         # Ensure negative prompt embeddings are available
         assert batch.negative_prompt_embeds is not None, (
