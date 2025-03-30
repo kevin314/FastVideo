@@ -1,4 +1,5 @@
-from fastvideo.models.hunyuan.text_encoder import  load_text_encoder, load_tokenizer
+import pytest
+from fastvideo.models.hunyuan.text_encoder import load_text_encoder, load_tokenizer
 import os
 import torch
 import torch.nn as nn
@@ -6,55 +7,56 @@ import numpy as np
 from fastvideo.v1.logger import init_logger
 from transformers import AutoConfig
 from fastvideo.v1.models.loader.component_loader import TextEncoderLoader
-
-from fastvideo.v1.distributed import init_distributed_environment, initialize_model_parallel
-from fastvideo.v1.pipelines.stages import DenoisingStage
 from fastvideo.v1.forward_context import set_forward_context
 from fastvideo.v1.utils import maybe_download_model
 from fastvideo.v1.inference_args import InferenceArgs
 
 logger = init_logger(__name__)
 
+os.environ["MASTER_ADDR"] = "localhost"
+os.environ["MASTER_PORT"] = "29503"
+
+# Set fixed random seed for reproducibility
+torch.manual_seed(42)
+np.random.seed(42)
+
+BASE_MODEL_PATH = "hunyuanvideo-community/HunyuanVideo"
+MODEL_PATH = maybe_download_model(BASE_MODEL_PATH, local_dir=os.path.join('data', BASE_MODEL_PATH))
+TEXT_ENCODER_PATH = os.path.join(MODEL_PATH, "text_encoder")
+TOKENIZER_PATH = os.path.join(MODEL_PATH, "tokenizer")
+
+@pytest.mark.usefixtures("distributed_setup")
 def test_llama_encoder():
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "12355"
-
-    init_distributed_environment(world_size=1,
-                                 rank=0,
-                                 distributed_init_method="env://",
-                                 local_rank=0,
-                                 backend="nccl")
-    initialize_model_parallel(tensor_model_parallel_size=1,
-                              sequence_model_parallel_size=1,
-                              backend="nccl")
+    """
+    Tests compatibility between two different implementations for loading text encoders:
+    1. load_text_encoder from fastvideo.models.hunyuan.text_encoder
+    2. TextEncoderLoader from fastvideo.v1.models.loader
+    
+    The test verifies that both implementations:
+    - Load models with the same weights and parameters
+    - Produce nearly identical outputs for the same input prompts
+    """
     args = InferenceArgs(model_path="meta-llama/Llama-2-7b-hf", precision="float16")
-
-    # Set fixed random seed for reproducibility
-    torch.manual_seed(42)
-    np.random.seed(42)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # Initialize the two model implementations
     logger.info(f"Loading models from {args.model_path}")
-    model_path = "hunyuanvideo-community/HunyuanVideo"
-    model_path = maybe_download_model(model_path, local_dir=f'data/{model_path}')
-    model_path = os.path.join(model_path, "text_encoder")
-    hf_config = AutoConfig.from_pretrained(model_path)
+    hf_config = AutoConfig.from_pretrained(TEXT_ENCODER_PATH)
     print(hf_config)
 
     # Load our implementation using the loader from text_encoder/__init__.py
     model1, _ = load_text_encoder(
         text_encoder_type="llm",
         text_encoder_precision='fp16',
-        text_encoder_path=model_path,
+        text_encoder_path=TEXT_ENCODER_PATH,
         logger=logger,
         device=device
     )
     loader = TextEncoderLoader()
     args.device_str = "cuda:0"
     device = torch.device(args.device_str)
-    model2 = loader.load_model(model_path, hf_config, device)
+    model2 = loader.load_model(TEXT_ENCODER_PATH, hf_config, device)
 
     # Convert to float16 and move to device
     model2 = model2.to(torch.float16)
@@ -102,10 +104,8 @@ def test_llama_encoder():
             except Exception as e:
                 logger.info(f"Error comparing {name1} and {name2}: {e}")
 
-    tokenizer_path = "data/hunyuanvideo-community/HunyuanVideo/tokenizer"
-    # Load tokenizer
     tokenizer, _ = load_tokenizer(tokenizer_type="llm",
-                                  tokenizer_path=tokenizer_path,
+                                  tokenizer_path=TOKENIZER_PATH,
                                   logger=logger)
 
     # Test with some sample prompts
@@ -166,3 +166,9 @@ def test_llama_encoder():
             logger.info(
                 f"Mean difference in last hidden states: {mean_diff_hidden.item()}"
             )
+
+             # Check if outputs are similar (allowing for small numerical differences)
+            assert mean_diff_hidden < 1e-2, \
+                f"Hidden states differ significantly: mean diff = {mean_diff_hidden.item()}"
+            assert max_diff_hidden < 1e-1, \
+                f"Hidden states differ significantly: max diff = {max_diff_hidden.item()}"
