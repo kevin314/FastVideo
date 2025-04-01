@@ -74,7 +74,9 @@ def wait_for_pod(pod_id):
     print("Waiting for RunPod to be ready...")
 
     # First wait for RUNNING status
-    while True:
+    max_attempts = 10
+    attempts = 0
+    while attempts < max_attempts:
         response = requests.get(f"{PODS_API}/{pod_id}", headers=HEADERS)
         pod_data = response.json()
         status = pod_data["desiredStatus"]
@@ -83,11 +85,17 @@ def wait_for_pod(pod_id):
             print("RunPod is running! Now waiting for ports to be assigned...")
             break
 
-        print(f"Current status: {status}, waiting...")
+        print(f"Current status: {status}, waiting... (attempt {attempts+1}/{max_attempts})")
         time.sleep(2)
+        attempts += 1
+    
+    if attempts >= max_attempts:
+        raise TimeoutError("Timed out waiting for RunPod to reach RUNNING state")
 
-    # Then wait for SSH and public IP
-    while True:
+    # Wait for ports to be assigned
+    max_attempts = 6
+    attempts = 0
+    while attempts < max_attempts:
         response = requests.get(f"{PODS_API}/{pod_id}", headers=HEADERS)
         pod_data = response.json()
         port_mappings = pod_data.get("portMappings")
@@ -99,8 +107,12 @@ def wait_for_pod(pod_id):
             print(f"SSH Port: {port_mappings['22']}")
             break
 
-        print("Waiting for SSH port and public IP to be available...")
+        print(f"Waiting for SSH port and public IP to be available... (attempt {attempts+1}/{max_attempts})")
         time.sleep(10)
+        attempts += 1
+    
+    if attempts >= max_attempts:
+        raise TimeoutError("Timed out waiting for RunPod SSH access")
 
 
 def execute_command(pod_id):
