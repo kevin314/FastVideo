@@ -113,7 +113,35 @@ def execute_command(pod_id):
     ssh_ip = pod_data["publicIp"]
     ssh_port = pod_data["portMappings"]["22"]
     
-    # Prepare commands with Conda setup before git clone
+    # First, copy the repository to the pod using scp
+    repo_dir = os.path.abspath(os.getcwd())
+    repo_name = os.path.basename(repo_dir)
+    
+    print(f"Copying repository from {repo_dir} to RunPod...")
+    
+    # Create a tarball of the repository
+    tar_command = [
+        "tar", 
+        "-czf", 
+        "/tmp/repo.tar.gz", 
+        "-C", 
+        os.path.dirname(repo_dir), 
+        repo_name
+    ]
+    subprocess.run(tar_command, check=True)
+    
+    # Copy the tarball to the pod
+    scp_command = [
+        "scp",
+        "-o", "StrictHostKeyChecking=no",
+        "-o", "UserKnownHostsFile=/dev/null",
+        "-P", str(ssh_port),
+        "/tmp/repo.tar.gz",
+        f"root@{ssh_ip}:/tmp/"
+    ]
+    subprocess.run(scp_command, check=True)
+    
+    # Prepare commands with Conda setup and extract the repository
     setup_steps = [
         "cd /workspace",
         # Set up Conda first
@@ -122,10 +150,10 @@ def execute_command(pod_id):
         "source $HOME/miniconda3/bin/activate",
         "conda create --name venv python=3.10.0 -y",
         "conda activate venv",
-        # Now clone the repository
-        f"git clone https://github.com/{GITHUB_REPOSITORY}.git",
-        f"cd $(basename {GITHUB_REPOSITORY})",
-        f"git checkout {GITHUB_SHA}",
+        # Extract the repository instead of cloning
+        "mkdir -p /workspace/repo",
+        "tar -xzf /tmp/repo.tar.gz -C /workspace/",
+        f"cd /workspace/{repo_name}",
         # Run the test command in the Conda environment
         args.test_command
     ]
@@ -134,8 +162,8 @@ def execute_command(pod_id):
     # Build SSH command
     ssh_command = [
         "ssh",
-        "-o", "StrictHostKeyChecking=no",  # Don't ask to confirm host key
-        "-o", "UserKnownHostsFile=/dev/null",  # Don't save host key
+        "-o", "StrictHostKeyChecking=no",
+        "-o", "UserKnownHostsFile=/dev/null",
         "-p", str(ssh_port),
         f"root@{ssh_ip}",
         remote_command
@@ -148,9 +176,9 @@ def execute_command(pod_id):
         process = subprocess.Popen(
             ssh_command,
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,  # Redirect stderr to stdout
+            stderr=subprocess.STDOUT,
             universal_newlines=True,
-            bufsize=1  # Line buffered
+            bufsize=1
         )
         
         # Capture output in strings for return value
@@ -181,8 +209,9 @@ def execute_command(pod_id):
         # Return results
         result = {
             "success": success,
+            "return_code": return_code,
             "stdout": stdout_str,
-            "stderr": ""  # Empty since stderr was redirected to stdout
+            "stderr": ""
         }
         return result
         

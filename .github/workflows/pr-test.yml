@@ -44,7 +44,7 @@ jobs:
         run: >-
           python .github/scripts/runpod_api.py 
           --gpu-type "NVIDIA A40"
-          --disk-size 100
+          --volume-size 100
           --test-command "./env_setup.sh &&
           pip install vllm &&
           pip install pytest &&
