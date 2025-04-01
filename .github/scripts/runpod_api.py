@@ -211,9 +211,16 @@ def main():
         wait_for_pod(pod_id)
         result = execute_command(pod_id)
 
+        # Check for explicit error
         if result.get("error") is not None:
-            print("Command failed!")
+            print(f"Error executing command: {result['error']}")
             sys.exit(1)
+        
+        # Check for command success
+        if not result.get("success", False):
+            print("Tests failed - check the output above for details on which tests failed")
+            sys.exit(1)  # Exit with non-zero code when tests fail
+            
     finally:
         if pod_id:
             terminate_pod(pod_id)
