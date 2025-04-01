@@ -152,7 +152,7 @@ def execute_command(pod_id):
         "conda activate venv",
         # Extract the repository instead of cloning
         "mkdir -p /workspace/repo",
-        "tar -xzf /tmp/repo.tar.gz -C /workspace/",
+        "tar -xzf /tmp/repo.tar.gz --no-same-owner -C /workspace/",
         f"cd /workspace/{repo_name}",
         # Run the test command in the Conda environment
         args.test_command
