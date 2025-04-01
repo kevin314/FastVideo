@@ -50,7 +50,7 @@ def create_pod():
     """Create a RunPod instance"""
     print(f"Creating RunPod instance with GPU: {args.gpu_type}...")
     payload = {
-        "name": f"github-test-{RUN_ID}",
+        "name": f"fastvideo-github-test-{RUN_ID}",
         "containerDiskInGb": args.disk_size,
         "volumeInGb": args.volume_size,
         "env": {
