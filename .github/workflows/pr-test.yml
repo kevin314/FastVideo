@@ -53,14 +53,6 @@ jobs:
           pip install pytest &&
           pytest ./fastvideo/v1/tests/ --ignore=./fastvideo/v1/tests/old_tests/ -s"
 
-      - name: Cleanup RunPod instance
-        if: always() # Run even if previous steps fail
-        env:
-          RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          JOB_ID: "unit-test"
-        run: python .github/scripts/runpod_cleanup.py
-
   int-test:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
@@ -102,10 +94,25 @@ jobs:
           pip install pytest &&
           pytest ./fastvideo/v1/tests/ --ignore=./fastvideo/v1/tests/old_tests/ -s"
 
-      - name: Cleanup RunPod instance
-        if: always() # Run even if previous steps fail
+  runpod-cleanup:
+    needs: [unit-test, int-test] # Add other jobs to this list as you create them
+    if: always() # Run even if previous jobs fail
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Cleanup all RunPod instances
         env:
+          JOB_IDS: '["unit-test", "int-test"]' # JSON array of job IDs
           RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
           GITHUB_RUN_ID: ${{ github.run_id }}
-          JOB_ID: "unit-test"
         run: python .github/scripts/runpod_cleanup.py

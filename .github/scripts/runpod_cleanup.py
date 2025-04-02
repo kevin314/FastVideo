@@ -5,13 +5,13 @@ RunPod Cleanup Script
 This script finds and terminates RunPod instances created by GitHub Actions workflows.
 """
 
+import json
 import os
 import sys
 import requests
 
 API_KEY = os.environ['RUNPOD_API_KEY']
 RUN_ID = os.environ['GITHUB_RUN_ID']
-JOB_ID = os.environ['JOB_ID']
 PODS_API = "https://rest.runpod.io/v1/pods"
 HEADERS = {
     "Content-Type": "application/json",
@@ -19,11 +19,27 @@ HEADERS = {
 }
 
 
+def get_job_ids():
+    """Parse job IDs from environment variable, with error handling"""
+    job_ids_str = os.environ.get('JOB_IDS')
+    try:
+        job_ids = json.loads(job_ids_str)
+        if not isinstance(job_ids, list):
+            print(f"Error: JOB_IDS is not a list.")
+            sys.exit(1)
+        return job_ids
+    except json.JSONDecodeError as e:
+        print(f"Error parsing JOB_IDS: {e}")
+        sys.exit(1)
+
+
 def cleanup_pods():
     """Find and terminate RunPod instances"""
+    job_ids = get_job_ids()
+
     print(f"RunPod Cleanup")
     print(f"Run ID: {RUN_ID}")
-    print(f"Job ID: {JOB_ID}")
+    print(f"Job IDs: {job_ids}")
 
     # Get all pods
     try:
@@ -32,7 +48,7 @@ def cleanup_pods():
         pods = response.json()
     except requests.exceptions.RequestException as e:
         print(f"Error getting pods: {e}")
-        return False
+        sys.exit(1)
 
     # Find and terminate pods created by this workflow run
     terminated_pods = []
@@ -40,8 +56,8 @@ def cleanup_pods():
         pod_name = pod.get("name", "")
         pod_id = pod.get("id")
 
-        # Check if this pod was created by this specific job
-        if f"{JOB_ID}-{RUN_ID}" in pod_name:
+        # Check if this pod was created by one of our jobs
+        if any(f"{job_id}-{RUN_ID}" in pod_name for job_id in job_ids):
             print(f"Found pod: {pod_id} ({pod_name})")
             try:
                 print(f"Terminating pod {pod_id}...")
@@ -52,19 +68,16 @@ def cleanup_pods():
                 print(f"Successfully terminated pod {pod_id}")
             except requests.exceptions.RequestException as e:
                 print(f"Error terminating pod {pod_id}: {e}")
+                sys.exit(1)
     if terminated_pods:
         print(f"Terminated {len(terminated_pods)} pods: {terminated_pods}")
     else:
         print("No pods found to terminate.")
 
-    return True
-
 
 def main():
     """Main function"""
-    success = cleanup_pods()
-    if not success:
-        sys.exit(1)
+    cleanup_pods()
 
 
 if __name__ == "__main__":
