@@ -5,41 +5,25 @@ RunPod Cleanup Script
 This script finds and terminates RunPod instances created by GitHub Actions workflows.
 """
 
-import json
 import os
 import sys
 import requests
 
 API_KEY = os.environ['RUNPOD_API_KEY']
 RUN_ID = os.environ['GITHUB_RUN_ID']
-PODS_API = "https://rest.runpod.io/v1/pods"
+JOB_ID = os.environ['JOB_ID']
+PODS_API = "https://api.runpod.io/v1/pods"
 HEADERS = {
     "Content-Type": "application/json",
     "Authorization": f"Bearer {API_KEY}"
 }
 
 
-def get_job_ids():
-    """Parse job IDs from environment variable, with error handling"""
-    job_ids_str = os.environ.get('JOB_IDS', '["unit-test"]')
-    try:
-        job_ids = json.loads(job_ids_str)
-        if not isinstance(job_ids, list):
-            print(f"Warning: JOB_IDS is not a list. Using default.")
-            return ["unit-test"]
-        return job_ids
-    except json.JSONDecodeError as e:
-        print(f"Error parsing JOB_IDS: {e}. Using default.")
-        return ["unit-test"]
-
-
 def cleanup_pods():
     """Find and terminate RunPod instances"""
-    job_ids = get_job_ids()
-
     print(f"RunPod Cleanup")
     print(f"Run ID: {RUN_ID}")
-    print(f"Job IDs: {job_ids}")
+    print(f"Job ID: {JOB_ID}")
 
     # Get all pods
     try:
@@ -56,8 +40,8 @@ def cleanup_pods():
         pod_name = pod.get("name", "")
         pod_id = pod.get("id")
 
-        # Check if this pod was created by one of our jobs
-        if any(f"{job_id}-{RUN_ID}" in pod_name for job_id in job_ids):
+        # Check if this pod was created by this specific job
+        if f"{JOB_ID}-{RUN_ID}" in pod_name:
             print(f"Found pod: {pod_id} ({pod_name})")
             try:
                 print(f"Terminating pod {pod_id}...")
