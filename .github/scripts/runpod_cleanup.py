@@ -45,7 +45,7 @@ def cleanup_pods():
     try:
         response = requests.get(PODS_API, headers=HEADERS)
         response.raise_for_status()
-        pods = response.json().get("pods", [])
+        pods = response.json()
     except requests.exceptions.RequestException as e:
         print(f"Error getting pods: {e}")
         return False
