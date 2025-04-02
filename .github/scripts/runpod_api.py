@@ -11,7 +11,10 @@ def parse_arguments():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='Run tests on RunPod GPU')
     parser.add_argument('--gpu-type', type=str, help='GPU type to use')
-    parser.add_argument('--gpu-count', type=int, help='Number of GPUs to use', default=1)
+    parser.add_argument('--gpu-count',
+                        type=int,
+                        help='Number of GPUs to use',
+                        default=1)
     parser.add_argument('--test-command', type=str, help='Test command to run')
     parser.add_argument('--disk-size',
                         type=int,
@@ -29,15 +32,13 @@ def parse_arguments():
     return parser.parse_args()
 
 
-# Configuration
 args = parse_arguments()
 API_KEY = os.environ['RUNPOD_API_KEY']
 GITHUB_SHA = os.environ['GITHUB_SHA']
 GITHUB_REF = os.environ.get('GITHUB_REF', 'unknown')
 GITHUB_REPOSITORY = os.environ['GITHUB_REPOSITORY']
 RUN_ID = os.environ['GITHUB_RUN_ID']
-
-# API endpoints
+JOB_ID = os.environ['JOB_ID']
 PODS_API = "https://rest.runpod.io/v1/pods"
 HEADERS = {
     "Content-Type": "application/json",
@@ -49,7 +50,7 @@ def create_pod():
     """Create a RunPod instance"""
     print(f"Creating RunPod instance with GPU: {args.gpu_type}...")
     payload = {
-        "name": f"github-test-{RUN_ID}",
+        "name": f"fastvideo-{JOB_ID}-{RUN_ID}",
         "containerDiskInGb": args.disk_size,
         "volumeInGb": args.volume_size,
         "env": {
@@ -71,142 +72,130 @@ def create_pod():
 def wait_for_pod(pod_id):
     """Wait for pod to be in RUNNING state and fully ready with SSH access"""
     print("Waiting for RunPod to be ready...")
-    
+
     # First wait for RUNNING status
-    while True:
+    max_attempts = 10
+    attempts = 0
+    while attempts < max_attempts:
         response = requests.get(f"{PODS_API}/{pod_id}", headers=HEADERS)
         pod_data = response.json()
         status = pod_data["desiredStatus"]
-        
+
         if status == "RUNNING":
             print("RunPod is running! Now waiting for ports to be assigned...")
             break
-            
-        print(f"Current status: {status}, waiting...")
+
+        print(
+            f"Current status: {status}, waiting... (attempt {attempts+1}/{max_attempts})"
+        )
         time.sleep(2)
-    
+        attempts += 1
+
+    if attempts >= max_attempts:
+        raise TimeoutError(
+            "Timed out waiting for RunPod to reach RUNNING state")
+
     # Then wait for SSH and public IP
-    while True:
+    max_attempts = 6
+    attempts = 0
+    while attempts < max_attempts:
         response = requests.get(f"{PODS_API}/{pod_id}", headers=HEADERS)
         pod_data = response.json()
         port_mappings = pod_data.get("portMappings")
-        
-        if (port_mappings is not None and 
-            "22" in port_mappings and 
-            pod_data.get("publicIp", "") != ""):
+
+        if (port_mappings is not None and "22" in port_mappings
+                and pod_data.get("publicIp", "") != ""):
             print("RunPod is ready with SSH access!")
             print(f"SSH IP: {pod_data['publicIp']}")
             print(f"SSH Port: {port_mappings['22']}")
             break
-            
-        print("Waiting for SSH port and public IP to be available...")
+
+        print(
+            f"Waiting for SSH port and public IP to be available... (attempt {attempts+1}/{max_attempts})"
+        )
         time.sleep(10)
+        attempts += 1
+
+    if attempts >= max_attempts:
+        raise TimeoutError("Timed out waiting for RunPod SSH access")
 
 
 def execute_command(pod_id):
     """Execute command on the pod via SSH using system SSH client"""
     print(f"Running command: {args.test_command}")
-    
-    # Get pod information for SSH connection
+
     response = requests.get(f"{PODS_API}/{pod_id}", headers=HEADERS)
     pod_data = response.json()
     ssh_ip = pod_data["publicIp"]
     ssh_port = pod_data["portMappings"]["22"]
-    
-    # First, copy the repository to the pod using scp
+
+    # Copy the repository to the pod using scp
     repo_dir = os.path.abspath(os.getcwd())
     repo_name = os.path.basename(repo_dir)
-    
+
     print(f"Copying repository from {repo_dir} to RunPod...")
-    
-    # Create a tarball of the repository
+
     tar_command = [
-        "tar", 
-        "-czf", 
-        "/tmp/repo.tar.gz", 
-        "-C", 
-        os.path.dirname(repo_dir), 
-        repo_name
+        "tar", "-czf", "/tmp/repo.tar.gz", "-C",
+        os.path.dirname(repo_dir), repo_name
     ]
     subprocess.run(tar_command, check=True)
-    
+
     # Copy the tarball to the pod
     scp_command = [
-        "scp",
-        "-o", "StrictHostKeyChecking=no",
-        "-o", "UserKnownHostsFile=/dev/null",
-        "-P", str(ssh_port),
-        "/tmp/repo.tar.gz",
-        f"root@{ssh_ip}:/tmp/"
+        "scp", "-o", "StrictHostKeyChecking=no", "-o",
+        "UserKnownHostsFile=/dev/null", "-P",
+        str(ssh_port), "/tmp/repo.tar.gz", f"root@{ssh_ip}:/tmp/"
     ]
     subprocess.run(scp_command, check=True)
-    
-    # Prepare commands with Conda setup and extract the repository
+
     setup_steps = [
         "cd /workspace",
-        # Set up Conda first
         "wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh",
         "bash Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/miniconda3",
         "source $HOME/miniconda3/bin/activate",
-        "conda create --name venv python=3.10.0 -y",
-        "conda activate venv",
-        # Extract the repository instead of cloning
+        "conda create --name venv python=3.10.0 -y", "conda activate venv",
         "mkdir -p /workspace/repo",
         "tar -xzf /tmp/repo.tar.gz --no-same-owner -C /workspace/",
-        f"cd /workspace/{repo_name}",
-        # Run the test command in the Conda environment
-        args.test_command
+        f"cd /workspace/{repo_name}", args.test_command
     ]
     remote_command = " && ".join(setup_steps)
-    
-    # Build SSH command
+
     ssh_command = [
-        "ssh",
-        "-o", "StrictHostKeyChecking=no",
-        "-o", "UserKnownHostsFile=/dev/null",
-        "-p", str(ssh_port),
-        f"root@{ssh_ip}",
-        remote_command
+        "ssh", "-o", "StrictHostKeyChecking=no", "-o",
+        "UserKnownHostsFile=/dev/null", "-p",
+        str(ssh_port), f"root@{ssh_ip}", remote_command
     ]
-    
+
     print(f"Connecting to {ssh_ip}:{ssh_port}...")
-    
+
     try:
-        # Execute SSH command with real-time output
-        process = subprocess.Popen(
-            ssh_command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            universal_newlines=True,
-            bufsize=1
-        )
-        
-        # Capture output in strings for return value
+        process = subprocess.Popen(ssh_command,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT,
+                                   universal_newlines=True,
+                                   bufsize=1)
+
         stdout_lines = []
-        
-        # Print output in real-time
+
         print("Command output:")
-        
+
         for line in iter(process.stdout.readline, ''):
             print(line.strip())
             stdout_lines.append(line)
-            
-        # Wait for process to complete
+
         process.wait()
-        
-        # Get return code
+
         return_code = process.returncode
         success = return_code == 0
-        
-        # Combine output lines
+
         stdout_str = "".join(stdout_lines)
-        
+
         if success:
             print("Command executed successfully")
         else:
             print(f"Command failed with exit code {return_code}")
-        
-        # Return results
+
         result = {
             "success": success,
             "return_code": return_code,
@@ -214,15 +203,10 @@ def execute_command(pod_id):
             "stderr": ""
         }
         return result
-        
+
     except Exception as e:
         print(f"Error executing SSH command: {str(e)}")
-        result = {
-            "success": False,
-            "error": str(e),
-            "stdout": "",
-            "stderr": ""
-        }
+        result = {"success": False, "error": str(e), "stdout": "", "stderr": ""}
         return result
 
 
@@ -240,16 +224,16 @@ def main():
         wait_for_pod(pod_id)
         result = execute_command(pod_id)
 
-        # Check for explicit error
         if result.get("error") is not None:
             print(f"Error executing command: {result['error']}")
             sys.exit(1)
-        
-        # Check for command success
+
         if not result.get("success", False):
-            print("Tests failed - check the output above for details on which tests failed")
-            sys.exit(1)  # Exit with non-zero code when tests fail
-            
+            print(
+                "Tests failed - check the output above for details on which tests failed"
+            )
+            sys.exit(1)
+
     finally:
         if pod_id:
             terminate_pod(pod_id)

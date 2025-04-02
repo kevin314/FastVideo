@@ -42,6 +42,7 @@ jobs:
           GITHUB_REF: ${{ github.ref }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
+          JOB_ID: "unit-test" # Unique job identifier
         timeout-minutes: 1
         run: >-
           python .github/scripts/runpod_api.py 
@@ -51,3 +52,26 @@ jobs:
           pip install vllm &&
           pip install pytest &&
           pytest ./fastvideo/v1/tests/ --ignore=./fastvideo/v1/tests/old_tests/ -s"
+
+  runpod-cleanup:
+    needs: [unit-test] # Add other jobs to this list as you create them
+    if: always() # Run even if previous jobs fail
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Cleanup all RunPod instances
+        env:
+          RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          JOB_IDS: '["unit-test"]' # JSON array of job IDs
+        run: python .github/scripts/runpod_cleanup.py
