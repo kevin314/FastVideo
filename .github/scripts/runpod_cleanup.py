@@ -12,7 +12,7 @@ import requests
 API_KEY = os.environ['RUNPOD_API_KEY']
 RUN_ID = os.environ['GITHUB_RUN_ID']
 JOB_ID = os.environ['JOB_ID']
-PODS_API = "https://api.runpod.io/v1/pods"
+PODS_API = "https://rest.runpod.io/v1/pods"
 HEADERS = {
     "Content-Type": "application/json",
     "Authorization": f"Bearer {API_KEY}"
