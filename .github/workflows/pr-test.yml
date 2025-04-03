@@ -35,7 +35,7 @@ jobs:
 
   encoder-test:
     needs: change-filter
-    if: ${{ needs.change-filter.outputs.encoder-test == 'true' && github.event.pull_request.draft == false }}
+    if: ${{ needs.change-filter.outputs.encoder-test == 'true' }}
     runs-on: ubuntu-latest
     environment: runpod-runners
     steps:
@@ -78,7 +78,7 @@ jobs:
 
   runpod-cleanup:
     needs: [encoder-test] # Add other jobs to this list as you create them
-    if: always() # Run even if previous jobs fail or are skipped
+    if: ${{ github.event.pull_request.draft == false && always() }} # Run even if previous jobs fail or are skipped
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
