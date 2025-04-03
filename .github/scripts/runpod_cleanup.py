@@ -2,9 +2,10 @@ import json
 import os
 import sys
 import requests
+import uuid
 
 API_KEY = os.environ['RUNPOD_API_KEY']
-RUN_ID = os.environ['GITHUB_RUN_ID']
+RUN_ID = os.environ.get('GITHUB_RUN_ID', str(uuid.uuid4()))
 PODS_API = "https://rest.runpod.io/v1/pods"
 HEADERS = {
     "Content-Type": "application/json",
