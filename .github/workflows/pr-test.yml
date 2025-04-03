@@ -118,7 +118,7 @@ jobs:
 
   runpod-cleanup:
     needs: [encoder-test, int-test] # Add other jobs to this list as you create them
-    if: ${{ github.event.pull_request.draft == false }} # Run even if previous jobs fail
+    if: ${{ github.event.pull_request.draft == false && always() }} # Run even if previous jobs fail
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
