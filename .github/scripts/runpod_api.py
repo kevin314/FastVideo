@@ -38,7 +38,7 @@ GITHUB_SHA = os.environ['GITHUB_SHA']
 GITHUB_REF = os.environ.get('GITHUB_REF', 'unknown')
 GITHUB_REPOSITORY = os.environ['GITHUB_REPOSITORY']
 RUN_ID = os.environ['GITHUB_RUN_ID']
-
+JOB_ID = os.environ['JOB_ID']
 PODS_API = "https://rest.runpod.io/v1/pods"
 HEADERS = {
     "Content-Type": "application/json",
@@ -50,7 +50,7 @@ def create_pod():
     """Create a RunPod instance"""
     print(f"Creating RunPod instance with GPU: {args.gpu_type}...")
     payload = {
-        "name": f"fastvideo-github-test-{RUN_ID}",
+        "name": f"fastvideo-{JOB_ID}-{RUN_ID}",
         "containerDiskInGb": args.disk_size,
         "volumeInGb": args.volume_size,
         "env": {
@@ -85,12 +85,15 @@ def wait_for_pod(pod_id):
             print("RunPod is running! Now waiting for ports to be assigned...")
             break
 
-        print(f"Current status: {status}, waiting... (attempt {attempts+1}/{max_attempts})")
+        print(
+            f"Current status: {status}, waiting... (attempt {attempts+1}/{max_attempts})"
+        )
         time.sleep(2)
         attempts += 1
-    
+
     if attempts >= max_attempts:
-        raise TimeoutError("Timed out waiting for RunPod to reach RUNNING state")
+        raise TimeoutError(
+            "Timed out waiting for RunPod to reach RUNNING state")
 
     # Wait for ports to be assigned
     max_attempts = 6
@@ -107,10 +110,12 @@ def wait_for_pod(pod_id):
             print(f"SSH Port: {port_mappings['22']}")
             break
 
-        print(f"Waiting for SSH port and public IP to be available... (attempt {attempts+1}/{max_attempts})")
+        print(
+            f"Waiting for SSH port and public IP to be available... (attempt {attempts+1}/{max_attempts})"
+        )
         time.sleep(10)
         attempts += 1
-    
+
     if attempts >= max_attempts:
         raise TimeoutError("Timed out waiting for RunPod SSH access")
 
