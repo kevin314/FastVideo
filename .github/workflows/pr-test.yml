@@ -78,8 +78,13 @@ jobs:
 
   runpod-cleanup:
     needs: [encoder-test] # Add other jobs to this list as you create them
-    if: ${{ github.event.pull_request.draft == false && always() }} # Run even if previous jobs fail or are skipped
+    if: >-
+      always() && 
+      ${{ github.event.pull_request.draft == false && 
+          (contains(needs.*.result, 'success') || 
+           contains(needs.*.result, 'failure')) }}
     runs-on: ubuntu-latest
+    environment: runpod-runners
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
