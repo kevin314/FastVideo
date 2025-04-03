@@ -1,107 +1,62 @@
-from fastvideo.models.hunyuan.text_encoder import  load_text_encoder, load_tokenizer
+import pytest
+from fastvideo.models.hunyuan.text_encoder import load_text_encoder, load_tokenizer
 import os
 import torch
 import torch.nn as nn
-import argparse
 import numpy as np
 from fastvideo.v1.logger import init_logger
 from transformers import AutoConfig
 from fastvideo.v1.models.loader.component_loader import TextEncoderLoader
-
-from fastvideo.v1.distributed import init_distributed_environment, initialize_model_parallel
-from fastvideo.v1.pipelines.stages import DenoisingStage
 from fastvideo.v1.forward_context import set_forward_context
+from fastvideo.v1.utils import maybe_download_model
+from fastvideo.v1.inference_args import InferenceArgs
+
 logger = init_logger(__name__)
 
+os.environ["MASTER_ADDR"] = "localhost"
+os.environ["MASTER_PORT"] = "29503"
 
-def initialize_identical_weights(model1, model2, seed=42):
-    """Initialize both models with identical weights using a fixed seed for reproducibility."""
-    # Get all parameters from both models
-    params1 = dict(model1.named_parameters())
-    params2 = dict(model2.named_parameters())
+# Set fixed random seed for reproducibility
+torch.manual_seed(42)
+np.random.seed(42)
 
-    # Initialize each layer with identical values
-    with torch.no_grad():
-        # Initialize weights
-        for name1, param1 in params1.items():
-            if 'weight' in name1:
-                # Set seed before each weight initialization
-                torch.manual_seed(seed)
-                nn.init.normal_(param1, mean=0.0, std=0.05)
+BASE_MODEL_PATH = "hunyuanvideo-community/HunyuanVideo"
+MODEL_PATH = maybe_download_model(BASE_MODEL_PATH, local_dir=os.path.join('data', BASE_MODEL_PATH))
+TEXT_ENCODER_PATH = os.path.join(MODEL_PATH, "text_encoder")
+TOKENIZER_PATH = os.path.join(MODEL_PATH, "tokenizer")
 
-        for name2, param2 in params2.items():
-            if 'weight' in name2:
-                # Reset seed to get same initialization
-                torch.manual_seed(seed)
-                nn.init.normal_(param2, mean=0.0, std=0.05)
-
-        # Initialize biases
-        for name1, param1 in params1.items():
-            if 'bias' in name1:
-                torch.manual_seed(seed)
-                nn.init.normal_(param1, mean=0.0, std=0.05)
-                param1.data = param1.data.to(torch.bfloat16)
-
-        for name2, param2 in params2.items():
-            if 'bias' in name2:
-                torch.manual_seed(seed)
-                nn.init.normal_(param2, mean=0.0, std=0.05)
-                param2.data = param2.data.to(torch.bfloat16)
-
-    logger.info("Both models initialized with identical weights in bfloat16")
-    return model1, model2
-
-
-def setup_args():
-    parser = argparse.ArgumentParser(description='LLaMA Encoder Test')
-    parser.add_argument('--model-path',
-                        type=str,
-                        default="meta-llama/Llama-2-7b-hf",
-                        help='Path to the LLaMA model')
-    parser.add_argument(
-        '--precision',
-        type=str,
-        default="float16",
-        help='Precision to use for the model (float32, float16, bfloat16)')
-    return parser.parse_args()
-
-
+@pytest.mark.usefixtures("distributed_setup")
 def test_llama_encoder():
-    init_distributed_environment(world_size=1,
-                                 rank=0,
-                                 distributed_init_method="env://",
-                                 local_rank=0,
-                                 backend="nccl")
-    initialize_model_parallel(tensor_model_parallel_size=1,
-                              sequence_model_parallel_size=1,
-                              backend="nccl")
-    args = setup_args()
-
-    # Set fixed random seed for reproducibility
-    torch.manual_seed(42)
-    np.random.seed(42)
+    """
+    Tests compatibility between two different implementations for loading text encoders:
+    1. load_text_encoder from fastvideo.models.hunyuan.text_encoder
+    2. TextEncoderLoader from fastvideo.v1.models.loader
+    
+    The test verifies that both implementations:
+    - Load models with the same weights and parameters
+    - Produce nearly identical outputs for the same input prompts
+    """
+    args = InferenceArgs(model_path="meta-llama/Llama-2-7b-hf", precision="float16")
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # Initialize the two model implementations
     logger.info(f"Loading models from {args.model_path}")
-    model_path = "data/hunyuanvideo-community/HunyuanVideo/text_encoder"
-
-    hf_config = AutoConfig.from_pretrained(model_path)
+    hf_config = AutoConfig.from_pretrained(TEXT_ENCODER_PATH)
     print(hf_config)
 
     # Load our implementation using the loader from text_encoder/__init__.py
     model1, _ = load_text_encoder(
         text_encoder_type="llm",
         text_encoder_precision='fp16',
-        text_encoder_path=model_path,
+        text_encoder_path=TEXT_ENCODER_PATH,
         logger=logger,
         device=device
     )
     loader = TextEncoderLoader()
     args.device_str = "cuda:0"
     device = torch.device(args.device_str)
-    model2 = loader.load_model(model_path, hf_config, device)
+    model2 = loader.load_model(TEXT_ENCODER_PATH, hf_config, device)
 
     # Convert to float16 and move to device
     model2 = model2.to(torch.float16)
@@ -149,10 +104,8 @@ def test_llama_encoder():
             except Exception as e:
                 logger.info(f"Error comparing {name1} and {name2}: {e}")
 
-    tokenizer_path = "data/hunyuanvideo-community/HunyuanVideo/tokenizer"
-    # Load tokenizer
     tokenizer, _ = load_tokenizer(tokenizer_type="llm",
-                                  tokenizer_path=tokenizer_path,
+                                  tokenizer_path=TOKENIZER_PATH,
                                   logger=logger)
 
     # Test with some sample prompts
@@ -214,11 +167,8 @@ def test_llama_encoder():
                 f"Mean difference in last hidden states: {mean_diff_hidden.item()}"
             )
 
-    logger.info(
-        "Test passed! Both LLaMA encoder implementations produce similar outputs."
-    )
-    logger.info("Test completed successfully")
-
-
-if __name__ == "__main__":
-    test_llama_encoder()
+             # Check if outputs are similar (allowing for small numerical differences)
+            assert mean_diff_hidden < 1e-2, \
+                f"Hidden states differ significantly: mean diff = {mean_diff_hidden.item()}"
+            assert max_diff_hidden < 1e-1, \
+                f"Hidden states differ significantly: max diff = {max_diff_hidden.item()}"
