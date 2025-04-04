@@ -110,8 +110,8 @@ jobs:
         timeout-minutes: 30
         run: >-
           python .github/scripts/runpod_api.py 
-          --gpu-type "NVIDIA A100-SXM4-80GB"
-          --gpu-count 1
+          --gpu-type "NVIDIA A40"
+          --gpu-count 2
           --disk-size 100
           --volume-size 100
           --test-command "./env_setup.sh &&
