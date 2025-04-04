@@ -53,14 +53,6 @@ jobs:
           echo "${{ secrets.RUNPOD_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub
-          
-          # Create SSH config with keep-alive settings
-          echo "Host *
-            ServerAliveInterval 60
-            ServerAliveCountMax 10
-            TCPKeepAlive yes
-          " > ~/.ssh/config
-          chmod 600 ~/.ssh/config
 
       - name: Install dependencies
         run: pip install requests
