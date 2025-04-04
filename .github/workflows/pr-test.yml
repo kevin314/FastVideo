@@ -124,11 +124,7 @@ jobs:
 
   runpod-cleanup:
     needs: [encoder-test, ssim-test] # Add other jobs to this list as you create them
-    if: >-
-      always() && 
-      ${{ github.event.pull_request.draft == false && 
-          (needs.encoder-test.result == 'success' || needs.encoder-test.result == 'failure' ||
-           needs.ssim-test.result == 'success' || needs.ssim-test.result == 'failure') }}
+    if: ${{ always() && github.event.pull_request.draft == false && (needs.encoder-test.result == 'success' || needs.encoder-test.result == 'failure' || needs.ssim-test.result == 'success' || needs.ssim-test.result == 'failure') }}
     runs-on: ubuntu-latest
     environment: runpod-runners
     steps:

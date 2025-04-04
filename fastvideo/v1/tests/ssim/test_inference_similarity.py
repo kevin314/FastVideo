@@ -1,19 +1,6 @@
 import os
 import pytest
-import time
-import re
 import json
-import imageio
-import numpy as np
-import torch
-import torchvision
-import subprocess
-import sys
-from einops import rearrange
-from datetime import datetime
-from pathlib import Path
-
-from fastvideo.v1.inference_args import InferenceArgs
 from fastvideo.v1.tests.ssim.compute_ssim import compute_video_ssim_torchvision
 from fastvideo.v1.logger import init_logger
 from fastvideo.v1.entrypoints.cli.utils import launch_distributed
@@ -102,8 +89,6 @@ def test_inference_similarity(num_inference_steps, prompt):
 
     os.makedirs(output_dir, exist_ok=True)
 
-    test_name = f"steps{num_inference_steps}_{prompt[:100]}"
-
     launch_args = [
         "--num-inference-steps",
         str(num_inference_steps),
@@ -150,6 +135,10 @@ def test_inference_similarity(num_inference_steps, prompt):
         output_dir), f"Output video was not generated at {output_dir}"
 
     reference_folder = os.path.join(script_dir, 'reference_videos')
+    
+    if not os.path.exists(reference_folder):
+        logger.error("Reference folder missing")
+        raise FileNotFoundError(f"Reference video folder does not exist: {reference_folder}")
 
     # Find the matching reference video based on the prompt
     reference_video_name = None
@@ -160,7 +149,8 @@ def test_inference_similarity(num_inference_steps, prompt):
             break
 
     if not reference_video_name:
-        pytest.skip(f"No reference video found for prompt: {prompt}")
+        logger.error(f"Reference video not found for prompt: {prompt}")
+        raise FileNotFoundError(f"Reference video missing")
 
     reference_video_path = os.path.join(reference_folder, reference_video_name)
     generated_video_path = os.path.join(output_dir, output_video_name)
