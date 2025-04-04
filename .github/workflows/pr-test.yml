@@ -118,15 +118,15 @@ jobs:
           pip install av &&
           pip install vllm &&
           pip install pytest &&
-          pytest ./fastvideo/v1/tests/ssim -s"
+          pytest ./fastvideo/v1/tests/ssim -vs"
 
   runpod-cleanup:
     needs: [encoder-test, ssim-test] # Add other jobs to this list as you create them
     if: >-
       always() && 
       ${{ github.event.pull_request.draft == false && 
-          (contains(needs.*.result, 'success') || 
-           contains(needs.*.result, 'failure')) }}
+          (contains(join(needs.*.result, ','), 'success') || 
+           contains(join(needs.*.result, ','), 'failure')) }}
     runs-on: ubuntu-latest
     environment: runpod-runners
     steps:
