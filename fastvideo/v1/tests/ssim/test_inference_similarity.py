@@ -9,7 +9,7 @@ logger = init_logger(__name__)
 
 # Base parameters from the shell script
 BASE_PARAMS = {
-    "num_gpus": 2,
+    "num_gpus": 1,
     "model_path": "data/FastHunyuan-diffusers",
     "height": 720,
     "width": 1280,
@@ -19,8 +19,8 @@ BASE_PARAMS = {
     "embedded_cfg_scale": 6,
     "flow_shift": 17,
     "seed": 1024,
-    "sp_size": 2,
-    "tp_size": 2,
+    "sp_size": 1,
+    "tp_size": 1,
     "vae_sp": True,
     "use_v1_transformer": True,
     "use_v1_vae": True,
