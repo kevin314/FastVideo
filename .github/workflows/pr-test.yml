@@ -101,13 +101,13 @@ jobs:
 
       - name: Run tests on RunPod
         env:
-          JOB_ID: "encoder-test"
+          JOB_ID: "ssim-test"
           RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_REF: ${{ github.ref }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
-        timeout-minutes: 30
+        timeout-minutes: 1
         run: >-
           python .github/scripts/runpod_api.py 
           --gpu-type "NVIDIA A40"
@@ -124,7 +124,7 @@ jobs:
 
   runpod-cleanup:
     needs: [encoder-test, ssim-test] # Add other jobs to this list as you create them
-    if: ${{ always() && github.event.pull_request.draft == false && (needs.encoder-test.result == 'success' || needs.encoder-test.result == 'failure' || needs.ssim-test.result == 'success' || needs.ssim-test.result == 'failure') }}
+    if: ${{ always() && github.event.pull_request.draft == false && (contains(needs.*.result, 'success') || contains(needs.*.result, 'failure'))}}
     runs-on: ubuntu-latest
     environment: runpod-runners
     steps:
