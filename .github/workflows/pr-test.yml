@@ -112,12 +112,14 @@ jobs:
           python .github/scripts/runpod_api.py 
           --gpu-type "NVIDIA A40"
           --gpu-count 2
+          --disk-size 100
           --volume-size 100
           --test-command "./env_setup.sh &&
           pip install pytorch-msssim &&
           pip install av &&
           pip install vllm &&
           pip install pytest &&
+          python scripts/huggingface/download_hf.py --repo_id=FastVideo/FastHunyuan-diffusers --local_dir=data/FastHunyuan-diffusers --repo_type=model &&
           pytest ./fastvideo/v1/tests/ssim -vs"
 
   runpod-cleanup:
@@ -125,8 +127,8 @@ jobs:
     if: >-
       always() && 
       ${{ github.event.pull_request.draft == false && 
-          (contains(join(needs.*.result, ','), 'success') || 
-           contains(join(needs.*.result, ','), 'failure')) }}
+          (needs.encoder-test.result == 'success' || needs.encoder-test.result == 'failure' ||
+           needs.ssim-test.result == 'success' || needs.ssim-test.result == 'failure') }}
     runs-on: ubuntu-latest
     environment: runpod-runners
     steps:
