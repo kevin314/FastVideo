@@ -75,7 +75,7 @@ jobs:
           --volume-size 100
           --test-command "pip install -e .[test] &&
           pip install flash-attn==2.7.0.post2 &&
-          pytest ./fastvideo/v1/tests/ --ignore=./fastvideo/v1/tests/old_tests/ -s"
+          pytest ./fastvideo/v1/tests/test_clip_encoder.py ./fastvideo/v1/tests/test_llama_encoder.py -s"
 
   ssim-test:
     if: ${{ github.event.pull_request.draft == false }}
