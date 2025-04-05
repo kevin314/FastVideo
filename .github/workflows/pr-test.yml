@@ -32,6 +32,8 @@ jobs:
             encoder-test:
               - 'fastvideo/v1/models/encoders/**'
               - 'fastvideo/v1/models/loaders/**'
+              - 'fastvideo/v1/tests/test_clip_encoder.py'
+              - 'fastvideo/v1/tests/test_llama_encoder.py'
 
   encoder-test:
     needs: change-filter
