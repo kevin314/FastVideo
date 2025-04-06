@@ -15,12 +15,12 @@ on:
   workflow_dispatch:
     inputs:
       run_encoder_test:
-        description: "Run encoder tests"
+        description: "Run encoder-test"
         required: false
         default: false
         type: boolean
       run_ssim_test:
-        description: "Run SSIM tests"
+        description: "Run ssim-test"
         required: false
         default: false
         type: boolean
@@ -32,7 +32,7 @@ concurrency:
 jobs:
   change-filter:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'workflow_dispatch' && github.event.pull_request.draft == false }}
+    if: ${{ github.event.pull_request.draft == false || github.event_name == 'workflow_dispatch' }}
     outputs:
       encoder-test: ${{ steps.filter.outputs.encoder-test }}
     steps:
@@ -49,7 +49,9 @@ jobs:
 
   encoder-test:
     needs: change-filter
-    if: ${{ always() && ((github.event_name != 'workflow_dispatch' && needs.change-filter.outputs.encoder-test == 'true') || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_encoder_test == 'true')) }}
+    if: >-
+      (github.event_name != 'workflow_dispatch' && needs.change-filter.outputs.encoder-test == 'true') || 
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.run_encoder_test == 'true')
     runs-on: ubuntu-latest
     environment: runpod-runners
     steps:
@@ -76,7 +78,7 @@ jobs:
           JOB_ID: "encoder-test"
           RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
           GITHUB_RUN_ID: ${{ github.run_id }}
-        timeout-minutes: 2
+        timeout-minutes: 30
         run: >-
           python .github/scripts/runpod_api.py 
           --gpu-type "NVIDIA A40"
@@ -96,7 +98,9 @@ jobs:
 
   ssim-test:
     needs: change-filter
-    if: ${{ always() && ((github.event_name != 'workflow_dispatch' && github.event.pull_request.draft == false) || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_ssim_test == 'true')) }}
+    if: >-
+      (github.event_name != 'workflow_dispatch' && github.event.pull_request.draft == false) || 
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.run_ssim_test == 'true')
     runs-on: ubuntu-latest
     environment: runpod-runners
     steps:
@@ -145,7 +149,7 @@ jobs:
 
   runpod-cleanup:
     needs: [encoder-test, ssim-test] # Add other jobs to this list as you create them
-    if: ${{ always() && ((github.event_name != 'workflow_dispatch' && github.event.pull_request.draft == false) || github.event_name == 'workflow_dispatch') && (contains(needs.*.result, 'success') || contains(needs.*.result, 'failure')) || contains(needs.*.result, 'cancelled')}}
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
