@@ -209,7 +209,7 @@ def terminate_pod(pod_id):
     """Terminate the pod"""
     print("Terminating RunPod...")
     requests.delete(f"{PODS_API}/{pod_id}", headers=HEADERS)
-    print("RunPod terminated")
+    print(f"Terminated pod {pod_id}")
 
 
 def main():
