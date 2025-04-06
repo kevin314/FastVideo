@@ -46,7 +46,7 @@ jobs:
               - 'fastvideo/v1/models/loaders/**'
               - 'fastvideo/v1/tests/test_clip_encoder.py'
               - 'fastvideo/v1/tests/test_llama_encoder.py'
-  #
+
   encoder-test:
     needs: change-filter
     if: >-
@@ -149,7 +149,7 @@ jobs:
 
   runpod-cleanup:
     needs: [encoder-test, ssim-test] # Add other jobs to this list as you create them
-    if: ${{ always() && ((github.event_name != 'workflow_dispatch' && github.event.pull_request.draft == false) || github.event_name == 'workflow_dispatch') && (contains(needs.*.result, 'success') || contains(needs.*.result, 'failure')) || contains(needs.*.result, 'cancelled')}}
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
