@@ -49,7 +49,7 @@ jobs:
   #
   encoder-test:
     needs: change-filter
-    if: ${{ always() && ((github.event_name != 'workflow_dispatch' && needs.change-filter.outputs.encoder-test == 'true') || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_encoder_test == 'true')) }}
+    if: ${{ (github.event_name != 'workflow_dispatch' && always() && needs.change-filter.outputs.encoder-test == 'true') || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_encoder_test == 'true') }}
     runs-on: ubuntu-latest
     environment: runpod-runners
     steps:
@@ -96,7 +96,7 @@ jobs:
 
   ssim-test:
     needs: change-filter
-    if: ${{ always() && ((github.event_name != 'workflow_dispatch' && github.event.pull_request.draft == false) || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_ssim_test == 'true')) }}
+    if: ${{ (github.event_name != 'workflow_dispatch' && always() && github.event.pull_request.draft == false) || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_ssim_test == 'true') }}
     runs-on: ubuntu-latest
     environment: runpod-runners
     steps:
