@@ -78,7 +78,7 @@ jobs:
           JOB_ID: "encoder-test"
           RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
           GITHUB_RUN_ID: ${{ github.run_id }}
-        timeout-minutes: 2
+        timeout-minutes: 30
         run: >-
           python .github/scripts/runpod_api.py 
           --gpu-type "NVIDIA A40"
