@@ -75,22 +75,28 @@ jobs:
         env:
           JOB_ID: "encoder-test"
           RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
-          GITHUB_SHA: ${{ github.sha }}
-          GITHUB_REF: ${{ github.ref }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
-        timeout-minutes: 30
+        timeout-minutes: 2
         run: >-
           python .github/scripts/runpod_api.py 
           --gpu-type "NVIDIA A40"
           --gpu-count 1
           --volume-size 100
           --test-command "pip install -e .[test] &&
-          pip install flash-attn==2.7.0.post2 &&
+          pip install flash-attn==2.7.0.post2 --no-build-isolation &&
           pytest ./fastvideo/v1/tests/test_clip_encoder.py ./fastvideo/v1/tests/test_llama_encoder.py -s"
 
+      - name: Terminate RunPod Instances
+        if: ${{ always() }}
+        env:
+          RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          JOB_ID: "encoder-test"
+        run: python .github/scripts/runpod_single_pod_cleanup.py
+
   ssim-test:
-    if: ${{ (github.event_name != 'workflow_dispatch' && github.event.pull_request.draft == false) || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_ssim_test == 'true') }}
+    needs: change-filter
+    if: ${{ always() && ((github.event_name != 'workflow_dispatch' && github.event.pull_request.draft == false) || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_ssim_test == 'true')) }}
     runs-on: ubuntu-latest
     environment: runpod-runners
     steps:
@@ -116,9 +122,6 @@ jobs:
         env:
           JOB_ID: "ssim-test"
           RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
-          GITHUB_SHA: ${{ github.sha }}
-          GITHUB_REF: ${{ github.ref }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
         timeout-minutes: 30
         run: >-
@@ -128,15 +131,22 @@ jobs:
           --disk-size 100
           --volume-size 100
           --test-command "pip install -e .[test] &&
-          pip install flash-attn==2.7.0.post2 &&
+          pip install flash-attn==2.7.0.post2 --no-build-isolation &&
           python scripts/huggingface/download_hf.py --repo_id=FastVideo/FastHunyuan-diffusers --local_dir=data/FastHunyuan-diffusers --repo_type=model &&
           pytest ./fastvideo/v1/tests/ssim -vs"
 
+      - name: Terminate RunPod Instances
+        if: ${{ always() }}
+        env:
+          RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          JOB_ID: "ssim-test"
+        run: python .github/scripts/runpod_single_pod_cleanup.py
+
   runpod-cleanup:
     needs: [encoder-test, ssim-test] # Add other jobs to this list as you create them
-    if: ${{ always() && ((github.event_name != 'workflow_dispatch' && github.event.pull_request.draft == false) || github.event_name == 'workflow_dispatch') && (contains(needs.*.result, 'success') || contains(needs.*.result, 'failure'))}}
+    if: ${{ always() && ((github.event_name != 'workflow_dispatch' && github.event.pull_request.draft == false) || github.event_name == 'workflow_dispatch') && (contains(needs.*.result, 'success') || contains(needs.*.result, 'failure')) || contains(needs.*.result, 'cancelled')}}
     runs-on: ubuntu-latest
-    environment: runpod-runners
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
