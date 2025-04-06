@@ -29,11 +29,16 @@ def get_job_ids():
 
 def cleanup_pods():
     """Find and terminate RunPod instances"""
-    job_ids = get_job_ids()
-
-    print(f"RunPod Cleanup")
     print(f"Run ID: {RUN_ID}")
-    print(f"Job IDs: {job_ids}")
+
+    single_job_id = os.environ.get('JOB_ID')
+    
+    if single_job_id:
+        job_ids = [single_job_id]
+        print(f"Job ID: {single_job_id}")
+    else:
+        job_ids = get_job_ids()
+        print(f"Job IDs: {job_ids}")
 
     # Get all pods associated with RunPod API_KEY
     try:
@@ -63,10 +68,17 @@ def cleanup_pods():
             except requests.exceptions.RequestException as e:
                 print(f"Error terminating pod {pod_id}: {e}")
                 sys.exit(1)
+    
     if terminated_pods:
-        print(f"Terminated {len(terminated_pods)} pods: {terminated_pods}")
+        if single_job_id:
+            print(f"Terminated pod: {terminated_pods[0]}")
+        else:
+            print(f"Terminated {len(terminated_pods)} pods: {terminated_pods}")
     else:
-        print("No pods found to terminate.")
+        if single_job_id:
+            print(f"No pod found matching pattern: {single_job_id}-{RUN_ID}")
+        else:
+            print("No pods found to terminate.")
 
 
 def main():

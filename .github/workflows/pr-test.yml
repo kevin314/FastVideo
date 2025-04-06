@@ -92,7 +92,7 @@ jobs:
           RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           JOB_ID: "encoder-test"
-        run: python .github/scripts/runpod_cleanup_single.py
+        run: python .github/scripts/runpod_cleanup.py
 
   ssim-test:
     needs: change-filter
@@ -141,7 +141,7 @@ jobs:
           RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           JOB_ID: "ssim-test"
-        run: python .github/scripts/runpod_cleanup_single.py
+        run: python .github/scripts/runpod_cleanup.py
 
   runpod-cleanup:
     needs: [encoder-test, ssim-test] # Add other jobs to this list as you create them
