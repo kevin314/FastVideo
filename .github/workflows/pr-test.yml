@@ -44,8 +44,7 @@ jobs:
             encoder-test:
               - 'fastvideo/v1/models/encoders/**'
               - 'fastvideo/v1/models/loaders/**'
-              - 'fastvideo/v1/tests/test_clip_encoder.py'
-              - 'fastvideo/v1/tests/test_llama_encoder.py'
+              - 'fastvideo/v1/tests/encoders/**'
 
   encoder-test:
     needs: change-filter
@@ -86,7 +85,7 @@ jobs:
           --volume-size 100
           --test-command "pip install -e .[test] &&
           pip install flash-attn==2.7.0.post2 --no-build-isolation &&
-          pytest ./fastvideo/v1/tests/test_clip_encoder.py ./fastvideo/v1/tests/test_llama_encoder.py -s"
+          pytest ./fastvideo/v1/tests/encoders -s"
 
       - name: Terminate RunPod Instances
         if: ${{ always() }}
