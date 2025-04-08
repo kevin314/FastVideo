@@ -30,14 +30,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # pre-commit:
+  #   uses: ./.github/workflows/pre-commit.yml
+
   change-filter:
     runs-on: ubuntu-latest
+    # needs: pre-commit
     if: ${{ github.event.pull_request.draft == false || github.event_name == 'workflow_dispatch' }}
     outputs:
       encoder-test: ${{ steps.filter.outputs.encoder-test }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v2
+      - uses: dorny/paths-filter@v3
         id: filter
         with:
           filters: |
@@ -58,7 +62,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
@@ -72,28 +76,48 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Run tests on RunPod
+      - name: Create RunPod instance
+        id: create-pod
         env:
           JOB_ID: "encoder-test"
           RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
           GITHUB_RUN_ID: ${{ github.run_id }}
-        timeout-minutes: 30
+        timeout-minutes: 10
         run: >-
           python .github/scripts/runpod_api.py 
+          --action create
           --gpu-type "NVIDIA A40"
           --gpu-count 1
           --volume-size 100
-          --test-command "pip install -e .[test] &&
-          pip install flash-attn==2.7.0.post2 --no-build-isolation &&
-          pytest ./fastvideo/v1/tests/encoders -s"
 
-      - name: Terminate RunPod Instances
+      - name: Install dependencies on RunPod
+        env:
+          RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
+        timeout-minutes: 10
+        run: >-
+          python .github/scripts/runpod_api.py 
+          --action execute
+          --pod-id ${{ steps.create-pod.outputs.pod-id }}
+          --test-command "pip install -e .[test] && pip install flash-attn==2.7.0.post2 --no-build-isolation"
+
+      - name: Run encoder tests
+        env:
+          RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
+        timeout-minutes: 20
+        run: >-
+          python .github/scripts/runpod_api.py 
+          --action execute
+          --pod-id ${{ steps.create-pod.outputs.pod-id }}
+          --test-command "pytest ./fastvideo/v1/tests/encoders -s"
+
+      - name: Signal pod deletion
         if: ${{ always() }}
         env:
           RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          JOB_ID: "encoder-test"
-        run: python .github/scripts/runpod_cleanup.py
+        run: >-
+          python .github/scripts/runpod_api.py 
+          --action delete
+          --pod-id ${{ steps.create-pod.outputs.pod-id }}
 
   ssim-test:
     needs: change-filter
@@ -107,7 +131,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
@@ -121,21 +145,49 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Run tests on RunPod
+      - name: Create RunPod instance
+        id: create-pod
         env:
           JOB_ID: "ssim-test"
           RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
           GITHUB_RUN_ID: ${{ github.run_id }}
-        timeout-minutes: 30
+        timeout-minutes: 10
         run: >-
           python .github/scripts/runpod_api.py 
+          --action create
           --gpu-type "NVIDIA A40"
           --gpu-count 2
           --disk-size 100
           --volume-size 100
-          --test-command "pip install -e .[test] &&
-          pip install flash-attn==2.7.0.post2 --no-build-isolation &&
-          pytest ./fastvideo/v1/tests/ssim -vs"
+
+      - name: Install dependencies on RunPod
+        env:
+          RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
+        timeout-minutes: 10
+        run: >-
+          python .github/scripts/runpod_api.py 
+          --action execute
+          --pod-id ${{ steps.create-pod.outputs.pod-id }}
+          --test-command "pip install -e .[test] && pip install flash-attn==2.7.0.post2 --no-build-isolation"
+
+      - name: Run SSIM tests
+        env:
+          RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
+        timeout-minutes: 20
+        run: >-
+          python .github/scripts/runpod_api.py 
+          --action execute
+          --pod-id ${{ steps.create-pod.outputs.pod-id }}
+          --test-command "pytest ./fastvideo/v1/tests/ssim -vs"
+
+      - name: Signal pod deletion
+        if: ${{ always() }}
+        env:
+          RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
+        run: >-
+          python .github/scripts/runpod_api.py 
+          --action delete
+          --pod-id ${{ steps.create-pod.outputs.pod-id }}
 
       - name: Terminate RunPod Instances
         if: ${{ always() }}
@@ -154,7 +206,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
