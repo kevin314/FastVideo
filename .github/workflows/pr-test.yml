@@ -30,12 +30,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # pre-commit:
-  #   uses: ./.github/workflows/pre-commit.yml
+  pre-commit:
+    uses: ./.github/workflows/pre-commit.yml
 
   change-filter:
     runs-on: ubuntu-latest
-    # needs: pre-commit
+    needs: pre-commit
     if: ${{ github.event.pull_request.draft == false || github.event_name == 'workflow_dispatch' }}
     outputs:
       encoder-test: ${{ steps.filter.outputs.encoder-test }}
@@ -188,14 +188,6 @@ jobs:
           python .github/scripts/runpod_api.py 
           --action delete
           --pod-id ${{ steps.create-pod.outputs.pod-id }}
-
-      - name: Terminate RunPod Instances
-        if: ${{ always() }}
-        env:
-          RUNPOD_API_KEY: ${{ secrets.RUNPOD_API_KEY }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          JOB_ID: "ssim-test"
-        run: python .github/scripts/runpod_cleanup.py
 
   runpod-cleanup:
     needs: [encoder-test, ssim-test] # Add other jobs to this list as you create them
