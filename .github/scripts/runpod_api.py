@@ -200,11 +200,7 @@ def setup_repository(pod_id):
             "conda activate venv",
             "mkdir -p /workspace",
             "tar -xzf /tmp/repo.tar.gz --no-same-owner -C /workspace/",
-            f"cd /workspace/{repo_name}",
-            "echo 'export PATH=$HOME/miniconda3/bin:$PATH' >> ~/.bashrc",
-            "echo 'source $HOME/miniconda3/bin/activate' >> ~/.bashrc",
-            "echo 'conda activate venv' >> ~/.bashrc",
-            f"echo 'cd /workspace/{repo_name}' >> ~/.bashrc",
+            f"cd /workspace/{repo_name}"
         ]
         remote_command = " && ".join(setup_steps)
 
@@ -264,12 +260,25 @@ def execute_command(pod_id):
     if not args.test_command:
         print("No test command provided, skipping execution")
         return {"success": True}
-
+        
     print(f"Running command: {args.test_command}")
 
     pod_data = get_pod_info(pod_id)
     ssh_ip = pod_data["publicIp"]
     ssh_port = pod_data["portMappings"]["22"]
+    
+    # Get repository name for the working directory
+    repo_dir = os.path.abspath(os.getcwd())
+    repo_name = os.path.basename(repo_dir)
+    
+    # Prepend directory change and conda environment activation
+    full_command = (
+        f"cd /workspace/{repo_name} && "
+        f"export PATH=$HOME/miniconda3/bin:$PATH && "
+        f"source $HOME/miniconda3/bin/activate && "
+        f"conda activate venv && "
+        f"{args.test_command}"
+    )
 
     ssh_command = [
         "ssh",
@@ -284,10 +293,12 @@ def execute_command(pod_id):
         "-p",
         str(ssh_port),
         f"root@{ssh_ip}",
-        args.test_command,
+        full_command,
     ]
 
     print(f"Connecting to {ssh_ip}:{ssh_port}...")
+    print(f"Working directory: /workspace/{repo_name}")
+    print(f"Using conda environment: venv")
 
     try:
         process = subprocess.Popen(
