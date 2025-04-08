@@ -149,7 +149,6 @@ def wait_for_pod(pod_id):
 def setup_repository(pod_id):
     """Copy the repository to the pod and set up the environment"""
     print("Setting up repository on RunPod...")
-
     pod_data = get_pod_info(pod_id)
     ssh_ip = pod_data["publicIp"]
     ssh_port = pod_data["portMappings"]["22"]
