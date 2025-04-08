@@ -149,6 +149,7 @@ def wait_for_pod(pod_id):
 def setup_repository(pod_id):
     """Copy the repository to the pod and set up the environment"""
     print("Setting up repository on RunPod...")
+
     pod_data = get_pod_info(pod_id)
     ssh_ip = pod_data["publicIp"]
     ssh_port = pod_data["portMappings"]["22"]
@@ -257,10 +258,10 @@ def setup_repository(pod_id):
 def execute_command(pod_id):
     """Execute command on the pod via SSH using system SSH client"""
     if not args.test_command:
-        print("No test command provided, skipping execution")
+        print("No test command provided, skipping execution", flush=True)
         return {"success": True}
         
-    print(f"Running command: {args.test_command}")
+    print(f"Running command: {args.test_command}", flush=True)
 
     pod_data = get_pod_info(pod_id)
     ssh_ip = pod_data["publicIp"]
@@ -276,44 +277,42 @@ def execute_command(pod_id):
         f"export PATH=$HOME/miniconda3/bin:$PATH && "
         f"source $HOME/miniconda3/bin/activate && "
         f"conda activate venv && "
-        f"{args.test_command}"
+        f"PYTHONUNBUFFERED=1 {args.test_command}"
     )
 
+    # Add -t flag to force pseudo-terminal allocation which helps with buffering
     ssh_command = [
         "ssh",
-        "-o",
-        "StrictHostKeyChecking=no",
-        "-o",
-        "UserKnownHostsFile=/dev/null",
-        "-o",
-        "ServerAliveInterval=60",
-        "-o",
-        "ServerAliveCountMax=10",
-        "-p",
-        str(ssh_port),
+        "-t",
+        "-o", "StrictHostKeyChecking=no",
+        "-o", "UserKnownHostsFile=/dev/null",
+        "-o", "ServerAliveInterval=60",
+        "-o", "ServerAliveCountMax=10",
+        "-p", str(ssh_port),
         f"root@{ssh_ip}",
         full_command,
     ]
 
-    print(f"Connecting to {ssh_ip}:{ssh_port}...")
-    print(f"Working directory: /workspace/{repo_name}")
-    print(f"Using conda environment: venv")
+    print(f"Connecting to {ssh_ip}:{ssh_port}...", flush=True)
+    print(f"Working directory: /workspace/{repo_name}", flush=True)
+    print(f"Using conda environment: venv", flush=True)
 
     try:
+        # Set bufsize=0 for unbuffered output
         process = subprocess.Popen(
             ssh_command,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             universal_newlines=True,
-            bufsize=1,
+            bufsize=0,
         )
 
         stdout_lines = []
 
-        print("Command output:")
+        print("Command output:", flush=True)
 
         for line in iter(process.stdout.readline, ""):
-            print(line.strip())
+            print(line.strip(), flush=True)
             stdout_lines.append(line)
 
         process.wait()
@@ -324,9 +323,9 @@ def execute_command(pod_id):
         stdout_str = "".join(stdout_lines)
 
         if success:
-            print("Command executed successfully")
+            print("Command executed successfully", flush=True)
         else:
-            print(f"Command failed with exit code {return_code}")
+            print(f"Command failed with exit code {return_code}", flush=True)
 
         result = {
             "success": success,
@@ -337,7 +336,7 @@ def execute_command(pod_id):
         return result
 
     except Exception as e:
-        print(f"Error executing SSH command: {str(e)}")
+        print(f"Error executing SSH command: {str(e)}", flush=True)
         result = {"success": False, "error": str(e), "stdout": "", "stderr": ""}
         return result
 
