@@ -28,7 +28,7 @@ def parse_arguments():
     parser.add_argument(
         '--image',
         type=str,
-        default='runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04',
+        required=True,
         help='Docker image to use')
     return parser.parse_args()
 
@@ -43,9 +43,23 @@ HEADERS = {
     "Authorization": f"Bearer {API_KEY}"
 }
 
+# Get the repository name for custom image
+REPO = os.environ.get('GITHUB_REPOSITORY', '')
+
 
 def create_pod():
     """Create a RunPod instance"""
+    # Ensure image name is lowercase (Docker requirement)
+    image_name = args.image.lower()
+    print(f"Using specified image: {image_name}")
+    
+    # Use the exact start command from RunPod documentation
+    docker_start_cmd = [
+        "bash", 
+        "-c", 
+        "apt update;DEBIAN_FRONTEND=noninteractive apt-get install openssh-server -y;mkdir -p ~/.ssh;cd $_;chmod 700 ~/.ssh;echo \"$PUBLIC_KEY\" >> authorized_keys;chmod 700 authorized_keys;service ssh start;sleep infinity"
+    ]
+    
     print(f"Creating RunPod instance with GPU: {args.gpu_type}...")
     payload = {
         "name": f"fastvideo-{JOB_ID}-{RUN_ID}",
@@ -53,8 +67,9 @@ def create_pod():
         "volumeInGb": args.volume_size,
         "gpuTypeIds": [args.gpu_type],
         "gpuCount": args.gpu_count,
-        "imageName": args.image,
-        "allowedCudaVersions": ["12.4"]
+        "imageName": image_name,
+        "allowedCudaVersions": ["12.4"],
+        "dockerStartCmd": docker_start_cmd
     }
 
     response = requests.post(PODS_API, headers=HEADERS, json=payload)
@@ -91,7 +106,7 @@ def wait_for_pod(pod_id):
             "Timed out waiting for RunPod to reach RUNNING state")
 
     # Wait for ports to be assigned
-    max_attempts = 6
+    max_attempts = 30
     attempts = 0
     while attempts < max_attempts:
         response = requests.get(f"{PODS_API}/{pod_id}", headers=HEADERS)
@@ -108,7 +123,7 @@ def wait_for_pod(pod_id):
         print(
             f"Waiting for SSH port and public IP to be available... (attempt {attempts+1}/{max_attempts})"
         )
-        time.sleep(10)
+        time.sleep(20)
         attempts += 1
 
     if attempts >= max_attempts:
@@ -145,16 +160,15 @@ def execute_command(pod_id):
     ]
     subprocess.run(scp_command, check=True)
 
+    # For custom image, we can use the pre-configured environment
     setup_steps = [
-        "cd /workspace",
-        "wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh",
-        "bash Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/miniconda3",
-        "source $HOME/miniconda3/bin/activate",
-        "conda create --name venv python=3.10.0 -y", "conda activate venv",
-        "mkdir -p /workspace/repo",
         "tar -xzf /tmp/repo.tar.gz --no-same-owner -C /workspace/",
-        f"cd /workspace/{repo_name}", args.test_command
+        f"cd /workspace/{repo_name}",
+        "source /opt/conda/etc/profile.d/conda.sh",
+        "conda activate fastvideo-dev",
+        args.test_command
     ]
+    
     remote_command = " && ".join(setup_steps)
 
     ssh_command = [

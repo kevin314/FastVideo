@@ -14,6 +14,11 @@ on:
       - ".github/workflows/pr-test.yml"
   workflow_dispatch:
     inputs:
+      custom_image:
+        description: "Custom image from this repository (default: fastvideo-dev:latest)"
+        required: false
+        default: "fastvideo-dev:latest"
+        type: string
       run_encoder_test:
         description: "Run encoder-test"
         required: false
@@ -34,6 +39,9 @@ on:
         required: false
         default: false
         type: boolean
+
+env:
+  PYTHONUNBUFFERED: "1"
 
 concurrency:
   group: pr-test-${{ github.ref }}
@@ -107,9 +115,8 @@ jobs:
           --gpu-type "NVIDIA A40"
           --gpu-count 1
           --volume-size 100
-          --test-command "pip install -e .[test] &&
-          pip install flash-attn==2.7.0.post2 --no-build-isolation &&
-          pytest ./fastvideo/v1/tests/encoders -s"
+          --image "ghcr.io/${{ github.repository }}/${{ github.event.inputs.custom_image || 'fastvideo-dev:latest' }}"
+          --test-command "pip install -e . && pytest ./fastvideo/v1/tests/encoders -s"
 
       - name: Terminate RunPod Instances
         if: ${{ always() }}
@@ -156,9 +163,8 @@ jobs:
           --gpu-type "NVIDIA A40"
           --gpu-count 1
           --volume-size 100
-          --test-command "pip install -e .[test] &&
-          pip install flash-attn==2.7.0.post2 --no-build-isolation &&
-          pytest ./fastvideo/v1/tests/vaes -s"
+          --image "ghcr.io/${{ github.repository }}/${{ github.event.inputs.custom_image || 'fastvideo-dev:latest' }}"
+          --test-command "pip install -e . && pytest ./fastvideo/v1/tests/vaes -s"
 
       - name: Terminate RunPod Instances
         if: ${{ always() }}
@@ -205,9 +211,8 @@ jobs:
           --gpu-type "NVIDIA L40S"
           --gpu-count 1
           --volume-size 100
-          --test-command "pip install -e .[test] &&
-          pip install flash-attn==2.7.0.post2 --no-build-isolation &&
-          pytest ./fastvideo/v1/tests/transformers -s"
+          --image "ghcr.io/${{ github.repository }}/${{ github.event.inputs.custom_image || 'fastvideo-dev:latest' }}"
+          --test-command "pip install -e . && pytest ./fastvideo/v1/tests/transformers -s"
 
       - name: Terminate RunPod Instances
         if: ${{ always() }}
@@ -255,9 +260,8 @@ jobs:
           --gpu-count 2
           --disk-size 200
           --volume-size 200
-          --test-command "pip install -e .[test] &&
-          pip install flash-attn==2.7.0.post2 --no-build-isolation &&
-          pytest ./fastvideo/v1/tests/ssim -vs"
+          --image "ghcr.io/${{ github.repository }}/${{ github.event.inputs.custom_image || 'fastvideo-dev:latest' }}"
+          --test-command "pip install -e . && pytest ./fastvideo/v1/tests/ssim -vs"
 
       - name: Terminate RunPod Instances
         if: ${{ always() }}
