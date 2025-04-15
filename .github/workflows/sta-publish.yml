@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "csrc/sliding_tile_attention/setup.py"
+  workflow_dispatch:
 
 jobs:
   check-version-change:
@@ -43,7 +44,7 @@ jobs:
   build_wheels:
     name: Build Wheel
     needs: check-version-change
-    if: ${{ needs.check-version-change.outputs.version-changed == 'true' }}
+    if: ${{ needs.check-version-change.outputs.version-changed == 'true' || github.event_name == 'workflow_dispatch' }}
     runs-on: ${{ matrix.os }}
 
     strategy:
