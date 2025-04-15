@@ -43,17 +43,13 @@ HEADERS = {
     "Authorization": f"Bearer {API_KEY}"
 }
 
-# Get the repository name for custom image
-REPO = os.environ.get('GITHUB_REPOSITORY', '')
-
 
 def create_pod():
     """Create a RunPod instance"""
     # Ensure image name is lowercase (Docker requirement)
     image_name = args.image.lower()
     print(f"Using specified image: {image_name}")
-    
-    # Use the exact start command from RunPod documentation
+
     docker_start_cmd = [
         "bash", 
         "-c", 
@@ -106,7 +102,7 @@ def wait_for_pod(pod_id):
             "Timed out waiting for RunPod to reach RUNNING state")
 
     # Wait for ports to be assigned
-    max_attempts = 30
+    max_attempts = 35
     attempts = 0
     while attempts < max_attempts:
         response = requests.get(f"{PODS_API}/{pod_id}", headers=HEADERS)

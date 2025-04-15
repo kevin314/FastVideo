@@ -27,7 +27,6 @@ COPY pyproject.toml ./
 # Create a dummy README to satisfy the installation
 RUN echo "# Placeholder" > README.md
 
-# Install the package in development mode with test dependencies
 RUN conda run -n fastvideo-dev pip install --no-cache-dir --upgrade pip && \
     conda run -n fastvideo-dev pip install --no-cache-dir .[dev] && \
     conda run -n fastvideo-dev pip install --no-cache-dir flash-attn==2.7.0.post2 --no-build-isolation && \
