@@ -169,7 +169,7 @@ jobs:
   publish_package:
     name: Publish package
     needs: [build_wheels, check-version-change]
-    if: ${{ needs.check-version-change.outputs.version-changed == 'true' }}
+    if: ${{ needs.check-version-change.outputs.version-changed == 'true' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-22.04
     permissions:
       id-token: write  # Needed for OIDC Trusted Publishing
