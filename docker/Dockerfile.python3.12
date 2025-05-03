@@ -29,7 +29,7 @@ RUN echo "# Placeholder" > README.md
 
 RUN conda run -n fastvideo-dev pip install --no-cache-dir --upgrade pip && \
     conda run -n fastvideo-dev pip install --no-cache-dir .[dev] && \
-    conda run -n fastvideo-dev pip install --no-cache-dir flash-attn==2.7.0.post2 --no-build-isolation && \
+    conda run -n fastvideo-dev pip install --no-cache-dir flash-attn==2.7.4.post1 --no-build-isolation && \
     conda clean -afy
 
 COPY . .
