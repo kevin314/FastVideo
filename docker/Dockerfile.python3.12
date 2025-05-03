@@ -17,7 +17,7 @@ RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh &
 
 ENV PATH=/opt/conda/bin:$PATH
 
-RUN conda create --name fastvideo-dev python=3.10.0 -y
+RUN conda create --name fastvideo-dev python=3.12.10 -y
 
 SHELL ["/bin/bash", "-c"]
 
@@ -45,4 +45,4 @@ RUN echo 'source /opt/conda/etc/profile.d/conda.sh' >> /root/.bashrc && \
     # Ensure .bashrc is sourced for SSH login shells
     echo 'if [ -f ~/.bashrc ]; then . ~/.bashrc; fi' > /root/.profile
 
-EXPOSE 22
+EXPOSE 22 
