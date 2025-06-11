@@ -38,9 +38,13 @@ fi
 
 log "modal version: $(python3 -m modal --version)"
 
-# Set up Modal authentication using environment variables
-if [ -n "${MODAL_TOKEN_ID:-}" ] && [ -n "${MODAL_TOKEN_SECRET:-}" ]; then
-    log "Setting up Modal authentication from environment variables..."
+# Set up Modal authentication using Buildkite secrets
+log "Setting up Modal authentication from Buildkite secrets..."
+MODAL_TOKEN_ID=$(buildkite-agent secret get modal_token_id)
+MODAL_TOKEN_SECRET=$(buildkite-agent secret get modal_token_secret)
+
+if [ -n "$MODAL_TOKEN_ID" ] && [ -n "$MODAL_TOKEN_SECRET" ]; then
+    log "Retrieved Modal credentials from Buildkite secrets"
     python3 -m modal token set --token-id "$MODAL_TOKEN_ID" --token-secret "$MODAL_TOKEN_SECRET" --profile buildkite-ci --activate --verify
     if [ $? -eq 0 ]; then
         log "Modal authentication successful"
@@ -49,9 +53,10 @@ if [ -n "${MODAL_TOKEN_ID:-}" ] && [ -n "${MODAL_TOKEN_SECRET:-}" ]; then
         exit 1
     fi
 else
-    log "Warning: MODAL_TOKEN_ID and MODAL_TOKEN_SECRET not set"
+    log "Error: Could not retrieve Modal credentials from Buildkite secrets."
+    log "Please ensure 'modal_token_id' and 'modal_token_secret' secrets are set in Buildkite."
+    exit 1
 fi
-
 
 # Check if the modal test file exists
 MODAL_TEST_FILE="modal/test_gpu.py"
