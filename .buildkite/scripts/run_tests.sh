@@ -19,25 +19,39 @@ fi
 log "Running as $(whoami)"
 log "=== Starting Modal test execution ==="
 
-# Verify modal is installed and working
-if ! command -v modal &> /dev/null; then
-    log "Error: modal is not installed. Please install it first."
-    exit 1
-fi
-
-log "modal version: $(modal --version)"
-
-# Check if modal is authenticated
-log "Checking modal authentication..."
-if ! modal token list &> /dev/null; then
-    log "Error: modal is not authenticated. Please run 'modal token new' first."
-    exit 1
-fi
-
 # Change to the project directory
 cd "$(dirname "$0")/../.."
 PROJECT_ROOT=$(pwd)
 log "Project root: $PROJECT_ROOT"
+
+# Install Modal if not available
+if ! python3 -m modal --version &> /dev/null; then
+    log "Modal not found, installing..."
+    pip install modal
+    
+    # Verify installation
+    if ! python3 -m modal --version &> /dev/null; then
+        log "Error: Failed to install modal. Please install it manually."
+        exit 1
+    fi
+fi
+
+log "modal version: $(python3 -m modal --version)"
+
+# Set up Modal authentication using environment variables
+if [ -n "${MODAL_TOKEN_ID:-}" ] && [ -n "${MODAL_TOKEN_SECRET:-}" ]; then
+    log "Setting up Modal authentication from environment variables..."
+    python3 -m modal token set --token-id "$MODAL_TOKEN_ID" --token-secret "$MODAL_TOKEN_SECRET" --profile buildkite-ci --activate --verify
+    if [ $? -eq 0 ]; then
+        log "Modal authentication successful"
+    else
+        log "Error: Failed to set Modal credentials"
+        exit 1
+    fi
+else
+    log "Warning: MODAL_TOKEN_ID and MODAL_TOKEN_SECRET not set"
+fi
+
 
 # Check if the modal test file exists
 MODAL_TEST_FILE="modal/test_gpu.py"
@@ -50,7 +64,7 @@ log "Found Modal test file at $MODAL_TEST_FILE"
 
 # Run the Modal test
 log "Running Modal test..."
-if modal run modal/test_gpu.py; then
+if python3 -m modal run modal/test_gpu.py; then
     TEST_EXIT_CODE=0
     log "Modal test completed successfully"
 else
