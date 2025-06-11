@@ -1,0 +1,16 @@
+steps:
+  - label: ":test_tube: FastVideo Tests"
+    command: ".buildkite/scripts/run_tests.sh"
+    timeout_in_minutes: 30
+    retry:
+      automatic:
+        - exit_status: -1  # Agent lost
+          limit: 2
+        - exit_status: 255 # Forced agent shutdown
+          limit: 2
+    artifact_paths:
+      - "*.log"
+    env:
+      BUILDKITE_CLEAN_CHECKOUT: "true"
+    agents:
+      queue: "default"
