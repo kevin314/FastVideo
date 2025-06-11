@@ -12,5 +12,9 @@ steps:
       - "*.log"
     env:
       BUILDKITE_CLEAN_CHECKOUT: "true"
+      BUILDKITE_GIT_CLONE_FLAGS: "--depth=1 --single-branch"
+      BUILDKITE_GIT_FETCH_FLAGS: "--depth=1"
+      BUILDKITE_REPO_CLONE_RETRIES: "3"
+      BUILDKITE_REPO_CLONE_RETRY_DELAY: "5"
     agents:
       queue: "default"
