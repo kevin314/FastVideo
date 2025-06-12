@@ -14,7 +14,7 @@ image = (
     .run_commands("/bin/bash -c 'source /opt/conda/etc/profile.d/conda.sh && conda activate fastvideo-dev && cd /FastVideo && pip install -e .[test]'")
 )
 
-@app.function(gpu="L40S:1", image=image, timeout=1800, mounts=[modal.Mount.from_local_dir(".", remote_path="/FastVideo")])
+@app.function(gpu="L40S:1", image=image, timeout=1800)
 def run_encoder_tests():
     """Run encoder tests on L40S GPU"""
     import subprocess
@@ -35,7 +35,7 @@ def run_encoder_tests():
     
     return result.returncode
 
-@app.function(gpu="L40S:1", image=image, timeout=1800, mounts=[modal.Mount.from_local_dir(".", remote_path="/FastVideo")])
+@app.function(gpu="L40S:1", image=image, timeout=1800)
 def run_vae_tests():
     """Run VAE tests on L40S GPU"""
     import subprocess
@@ -56,7 +56,7 @@ def run_vae_tests():
     
     return result.returncode
 
-@app.function(gpu="L40S:1", image=image, timeout=1800, mounts=[modal.Mount.from_local_dir(".", remote_path="/FastVideo")])
+@app.function(gpu="L40S:1", image=image, timeout=1800)
 def run_transformer_tests():
     """Run transformer tests on L40S GPU"""
     import subprocess
@@ -77,7 +77,7 @@ def run_transformer_tests():
     
     return result.returncode
 
-@app.function(gpu="L40S:2", image=image, timeout=3600, mounts=[modal.Mount.from_local_dir(".", remote_path="/FastVideo")])
+@app.function(gpu="L40S:2", image=image, timeout=3600)
 def run_ssim_tests():
     """Run SSIM tests on 2x L40S GPUs"""
     import subprocess
@@ -99,7 +99,7 @@ def run_ssim_tests():
     return result.returncode
 
 # Keep the original function for basic testing
-@app.function(gpu="L40S:2", image=image, timeout=600, mounts=[modal.Mount.from_local_dir(".", remote_path="/FastVideo")])
+@app.function(gpu="L40S:2", image=image, timeout=600)
 def run():
     """Basic test function"""
     import subprocess
