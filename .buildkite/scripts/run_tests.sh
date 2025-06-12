@@ -67,17 +67,84 @@ fi
 
 log "Found Modal test file at $MODAL_TEST_FILE"
 
-# Run the Modal test
-log "Running Modal test..."
-if python3 -m modal run modal/test_gpu.py; then
-    TEST_EXIT_CODE=0
-    log "Modal test completed successfully"
-else
-    TEST_EXIT_CODE=$?
-    log "Error: Modal test failed with exit code: $TEST_EXIT_CODE"
+# Determine which test to run based on TEST_TYPE environment variable or first argument
+TEST_TYPE="${TEST_TYPE:-${1:-basic}}"
+log "Test type: $TEST_TYPE"
+
+# Run the appropriate Modal test
+case "$TEST_TYPE" in
+    "encoder")
+        log "Running encoder tests..."
+        MODAL_COMMAND="python3 -m modal run modal/test_gpu.py::run_encoder_tests"
+        ;;
+    "vae")
+        log "Running VAE tests..."
+        MODAL_COMMAND="python3 -m modal run modal/test_gpu.py::run_vae_tests"
+        ;;
+    "transformer")
+        log "Running transformer tests..."
+        MODAL_COMMAND="python3 -m modal run modal/test_gpu.py::run_transformer_tests"
+        ;;
+    "ssim")
+        log "Running SSIM tests..."
+        MODAL_COMMAND="python3 -m modal run modal/test_gpu.py::run_ssim_tests"
+        ;;
+    "all")
+        log "Running all tests..."
+        # Run all tests sequentially
+        TESTS=("encoder" "vae" "transformer" "ssim")
+        FAILED_TESTS=()
+        
+        for test in "${TESTS[@]}"; do
+            log "Running $test tests..."
+            case "$test" in
+                "encoder")
+                    python3 -m modal run modal/test_gpu.py::run_encoder_tests
+                    ;;
+                "vae")
+                    python3 -m modal run modal/test_gpu.py::run_vae_tests
+                    ;;
+                "transformer")
+                    python3 -m modal run modal/test_gpu.py::run_transformer_tests
+                    ;;
+                "ssim")
+                    python3 -m modal run modal/test_gpu.py::run_ssim_tests
+                    ;;
+            esac
+            
+            if [ $? -ne 0 ]; then
+                FAILED_TESTS+=("$test")
+                log "❌ $test tests failed"
+            else
+                log "✅ $test tests passed"
+            fi
+        done
+        
+        if [ ${#FAILED_TESTS[@]} -eq 0 ]; then
+            log "All tests passed!"
+            exit 0
+        else
+            log "Failed tests: ${FAILED_TESTS[*]}"
+            exit 1
+        fi
+        ;;
+    "basic"|*)
+        log "Running basic test..."
+        MODAL_COMMAND="python3 -m modal run modal/test_gpu.py::run"
+        ;;
+esac
+
+# Run the single test command (if not running all tests)
+if [ "$TEST_TYPE" != "all" ]; then
+    log "Executing: $MODAL_COMMAND"
+    if eval "$MODAL_COMMAND"; then
+        TEST_EXIT_CODE=0
+        log "Modal test completed successfully"
+    else
+        TEST_EXIT_CODE=$?
+        log "Error: Modal test failed with exit code: $TEST_EXIT_CODE"
+    fi
+    
+    log "=== Test execution completed with exit code: $TEST_EXIT_CODE ==="
+    exit $TEST_EXIT_CODE
 fi
-
-log "=== Test execution completed with exit code: $TEST_EXIT_CODE ==="
-
-# Return the test exit code
-exit $TEST_EXIT_CODE

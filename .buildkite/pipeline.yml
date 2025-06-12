@@ -1,20 +1,75 @@
 steps:
-  - label: ":test_tube: FastVideo Tests"
-    command: ".buildkite/scripts/run_tests.sh"
+  - label: ":test_tube: Encoder Tests"
+    command: ".buildkite/scripts/run_tests.sh encoder"
     timeout_in_minutes: 30
     retry:
       automatic:
-        - exit_status: -1  # Agent lost
+        - exit_status: -1
           limit: 2
-        - exit_status: 255 # Forced agent shutdown
+        - exit_status: 255
           limit: 2
-    artifact_paths:
-      - "*.log"
     env:
       BUILDKITE_CLEAN_CHECKOUT: "true"
-      BUILDKITE_GIT_CLONE_FLAGS: "--depth=1 --single-branch"
-      BUILDKITE_GIT_FETCH_FLAGS: "--depth=1"
-      BUILDKITE_REPO_CLONE_RETRIES: "3"
-      BUILDKITE_REPO_CLONE_RETRY_DELAY: "5"
+      TEST_TYPE: "encoder"
     agents:
       queue: "default"
+
+  - label: ":test_tube: VAE Tests"
+    command: ".buildkite/scripts/run_tests.sh vae"
+    timeout_in_minutes: 30
+    retry:
+      automatic:
+        - exit_status: -1
+          limit: 2
+        - exit_status: 255
+          limit: 2
+    env:
+      BUILDKITE_CLEAN_CHECKOUT: "true"
+      TEST_TYPE: "vae"
+    agents:
+      queue: "default"
+
+  # - label: ":test_tube: Transformer Tests"
+  #   command: ".buildkite/scripts/run_tests.sh transformer"
+  #   timeout_in_minutes: 30
+  #   retry:
+  #     automatic:
+  #       - exit_status: -1
+  #         limit: 2
+  #       - exit_status: 255
+  #         limit: 2
+  #   env:
+  #     BUILDKITE_CLEAN_CHECKOUT: "true"
+  #     TEST_TYPE: "transformer"
+  #   agents:
+  #     queue: "default"
+
+  # - label: ":test_tube: SSIM Tests"
+  #   command: ".buildkite/scripts/run_tests.sh ssim"
+  #   timeout_in_minutes: 60
+  #   retry:
+  #     automatic:
+  #       - exit_status: -1
+  #         limit: 2
+  #       - exit_status: 255
+  #         limit: 2
+  #   env:
+  #     BUILDKITE_CLEAN_CHECKOUT: "true"
+  #     TEST_TYPE: "ssim"
+  #   agents:
+  #     queue: "default"
+
+  # - label: ":rocket: All Tests"
+  #   command: ".buildkite/scripts/run_tests.sh all"
+  #   timeout_in_minutes: 120
+  #   retry:
+  #     automatic:
+  #       - exit_status: -1
+  #         limit: 2
+  #       - exit_status: 255
+  #         limit: 2
+  #   env:
+  #     BUILDKITE_CLEAN_CHECKOUT: "true"
+  #     TEST_TYPE: "all"
+  #   agents:
+  #     queue: "default"
