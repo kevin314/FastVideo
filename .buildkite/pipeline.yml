@@ -1,5 +1,5 @@
 steps:
-  - label: "Check Changed Files"
+  - label: "Trigger Tests"
     plugins:
       - monorepo-diff#v1.4.0:
           diff: "git diff --name-only $BUILDKITE_PULL_REQUEST_BASE_BRANCH"
@@ -9,13 +9,27 @@ steps:
                 - "fastvideo/v1/models/loaders/**"
                 - "fastvideo/v1/tests/encoders/**"
               config:
-                trigger: "encoder-tests"
+                command: ".buildkite/scripts/run_tests.sh encoder"
+                label: "Encoder Tests"
+                timeout_in_minutes: 30
+                env:
+                  BUILDKITE_CLEAN_CHECKOUT: "true"
+                  TEST_TYPE: "encoder"
+                agents:
+                  queue: "default"
             - path:
                 - "fastvideo/v1/models/vaes/**"
                 - "fastvideo/v1/models/loaders/**"
                 - "fastvideo/v1/tests/vaes/**"
               config:
-                trigger: "vae-tests"
+                command: ".buildkite/scripts/run_tests.sh vae"
+                label: "VAE Tests"
+                timeout_in_minutes: 30
+                env:
+                  BUILDKITE_CLEAN_CHECKOUT: "true"
+                  TEST_TYPE: "vae"
+                agents:
+                  queue: "default"
             - path:
                 - "fastvideo/v1/models/dits/**"
                 - "fastvideo/v1/models/loaders/**"
@@ -23,47 +37,61 @@ steps:
                 - "fastvideo/v1/layers/**"
                 - "fastvideo/v1/attention/**"
               config:
-                trigger: "transformer-tests"
+                command: ".buildkite/scripts/run_tests.sh transformer"
+                label: "Transformer Tests"
+                timeout_in_minutes: 30
+                env:
+                  BUILDKITE_CLEAN_CHECKOUT: "true"
+                  TEST_TYPE: "transformer"
+                agents:
+                  queue: "default"
             - path: "fastvideo/v1/tests/ssim/**"
               config:
-                trigger: "ssim-tests"
+                command: ".buildkite/scripts/run_tests.sh ssim"
+                label: "SSIM Tests"
+                timeout_in_minutes: 60
+                env:
+                  BUILDKITE_CLEAN_CHECKOUT: "true"
+                  TEST_TYPE: "ssim"
+                agents:
+                  queue: "default"
 
-  - label: "Encoder Tests"
-    key: "encoder-tests"
-    command: ".buildkite/scripts/run_tests.sh encoder"
-    timeout_in_minutes: 30
-    env:
-      BUILDKITE_CLEAN_CHECKOUT: "true"
-      TEST_TYPE: "encoder"
-    agents:
-      queue: "default"
+  # - label: "Encoder Tests"
+  #   key: "encoder-tests"
+  #   command: ".buildkite/scripts/run_tests.sh encoder"
+  #   timeout_in_minutes: 30
+  #   env:
+  #     BUILDKITE_CLEAN_CHECKOUT: "true"
+  #     TEST_TYPE: "encoder"
+  #   agents:
+  #     queue: "default"
 
-  - label: "VAE Tests"
-    key: "vae-tests"
-    command: ".buildkite/scripts/run_tests.sh vae"
-    timeout_in_minutes: 30
-    env:
-      BUILDKITE_CLEAN_CHECKOUT: "true"
-      TEST_TYPE: "vae"
-    agents:
-      queue: "default"
+  # - label: "VAE Tests"
+  #   key: "vae-tests"
+  #   command: ".buildkite/scripts/run_tests.sh vae"
+  #   timeout_in_minutes: 30
+  #   env:
+  #     BUILDKITE_CLEAN_CHECKOUT: "true"
+  #     TEST_TYPE: "vae"
+  #   agents:
+  #     queue: "default"
 
-  - label: "Transformer Tests"
-    key: "transformer-tests"
-    command: ".buildkite/scripts/run_tests.sh transformer"
-    timeout_in_minutes: 30
-    env:
-      BUILDKITE_CLEAN_CHECKOUT: "true"
-      TEST_TYPE: "transformer"
-    agents:
-      queue: "default"
+  # - label: "Transformer Tests"
+  #   key: "transformer-tests"
+  #   command: ".buildkite/scripts/run_tests.sh transformer"
+  #   timeout_in_minutes: 30
+  #   env:
+  #     BUILDKITE_CLEAN_CHECKOUT: "true"
+  #     TEST_TYPE: "transformer"
+  #   agents:
+  #     queue: "default"
 
-  - label: "SSIM Tests"
-    key: "ssim-tests"
-    command: ".buildkite/scripts/run_tests.sh ssim"
-    timeout_in_minutes: 60
-    env:
-      BUILDKITE_CLEAN_CHECKOUT: "true"
-      TEST_TYPE: "ssim"
-    agents:
-      queue: "default"
+  # - label: "SSIM Tests"
+  #   key: "ssim-tests"
+  #   command: ".buildkite/scripts/run_tests.sh ssim"
+  #   timeout_in_minutes: 60
+  #   env:
+  #     BUILDKITE_CLEAN_CHECKOUT: "true"
+  #     TEST_TYPE: "ssim"
+  #   agents:
+  #     queue: "default"
