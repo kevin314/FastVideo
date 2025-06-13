@@ -3,8 +3,6 @@ steps:
     plugins:
       - monorepo-diff#v1.4.0:
           diff: "git diff --name-only $BUILDKITE_PULL_REQUEST_BASE_BRANCH"
-          env:
-            - BUILDKITE_CLEAN_CHECKOUT=true
           watch:
             - path: 
                 - "fastvideo/v1/models/encoders/**"
@@ -14,6 +12,7 @@ steps:
                 command: |
                   echo "Current working directory: $(pwd)"
                   ls -la
+                  chmod +x .buildkite/scripts/run_tests.sh
                   .buildkite/scripts/run_tests.sh encoder
                 label: "Encoder Tests"
                 timeout_in_minutes: 30
@@ -30,6 +29,7 @@ steps:
                 command: |
                   echo "Current working directory: $(pwd)"
                   ls -la
+                  chmod +x .buildkite/scripts/run_tests.sh
                   .buildkite/scripts/run_tests.sh vae
                 label: "VAE Tests"
                 timeout_in_minutes: 30
@@ -48,6 +48,7 @@ steps:
                 command: |
                   echo "Current working directory: $(pwd)"
                   ls -la
+                  chmod +x .buildkite/scripts/run_tests.sh
                   .buildkite/scripts/run_tests.sh transformer
                 label: "Transformer Tests"
                 timeout_in_minutes: 30
@@ -61,6 +62,7 @@ steps:
                 command: |
                   echo "Current working directory: $(pwd)"
                   ls -la
+                  chmod +x .buildkite/scripts/run_tests.sh
                   .buildkite/scripts/run_tests.sh ssim
                 label: "SSIM Tests"
                 timeout_in_minutes: 60
