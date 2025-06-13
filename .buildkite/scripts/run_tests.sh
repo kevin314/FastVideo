@@ -137,13 +137,40 @@ esac
 # Run the single test command (if not running all tests)
 if [ "$TEST_TYPE" != "all" ]; then
     log "Executing: $MODAL_COMMAND"
-    if eval "$MODAL_COMMAND"; then
-        TEST_EXIT_CODE=0
-        log "Modal test completed successfully"
-    else
-        TEST_EXIT_CODE=$?
-        log "Error: Modal test failed with exit code: $TEST_EXIT_CODE"
-    fi
+    # Run the command and capture its exit code
+    eval "$MODAL_COMMAND"
+    TEST_EXIT_CODE=$?
+    
+    # Check the exit code
+    case $TEST_EXIT_CODE in
+        0)
+            log "Modal test completed successfully"
+            ;;
+        1)
+            log "Error: Tests failed"
+            exit 1
+            ;;
+        2)
+            log "Error: Test execution was interrupted"
+            exit 1
+            ;;
+        3)
+            log "Error: Internal error occurred during test execution"
+            exit 1
+            ;;
+        4)
+            log "Error: Pytest was misused"
+            exit 1
+            ;;
+        5)
+            log "Error: No tests were collected"
+            exit 1
+            ;;
+        *)
+            log "Error: Modal test failed with exit code: $TEST_EXIT_CODE"
+            exit $TEST_EXIT_CODE
+            ;;
+    esac
     
     log "=== Test execution completed with exit code: $TEST_EXIT_CODE ==="
     exit $TEST_EXIT_CODE

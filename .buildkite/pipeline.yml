@@ -1,6 +1,14 @@
 steps:
   - label: ":test_tube: Encoder Tests"
-    command: ".buildkite/scripts/run_tests.sh encoder"
+    plugins:
+      - monorepo-diff#v1.4.0:
+          watch:
+            - path: 
+                - "fastvideo/v1/models/encoders/**"
+                - "fastvideo/v1/models/loaders/**"
+                - "fastvideo/v1/tests/encoders/**"
+              config:
+                command: ".buildkite/scripts/run_tests.sh encoder"
     timeout_in_minutes: 30
     retry:
       automatic:
@@ -15,7 +23,15 @@ steps:
       queue: "default"
 
   - label: ":test_tube: VAE Tests"
-    command: ".buildkite/scripts/run_tests.sh vae"
+    plugins:
+      - monorepo-diff#v1.4.0:
+          watch:
+            - path:
+                - "fastvideo/v1/models/vaes/**"
+                - "fastvideo/v1/models/loaders/**"
+                - "fastvideo/v1/tests/vaes/**"
+              config:
+                command: ".buildkite/scripts/run_tests.sh vae"
     timeout_in_minutes: 30
     retry:
       automatic:
@@ -29,20 +45,30 @@ steps:
     agents:
       queue: "default"
 
-  # - label: ":test_tube: Transformer Tests"
-  #   command: ".buildkite/scripts/run_tests.sh transformer"
-  #   timeout_in_minutes: 30
-  #   retry:
-  #     automatic:
-  #       - exit_status: -1
-  #         limit: 2
-  #       - exit_status: 255
-  #         limit: 2
-  #   env:
-  #     BUILDKITE_CLEAN_CHECKOUT: "true"
-  #     TEST_TYPE: "transformer"
-  #   agents:
-  #     queue: "default"
+  - label: ":test_tube: Transformer Tests"
+    plugins:
+      - monorepo-diff#v1.4.0:
+          watch:
+            - path:
+                - "fastvideo/v1/models/dits/**"
+                - "fastvideo/v1/models/loaders/**"
+                - "fastvideo/v1/tests/transformers/**"
+                - "fastvideo/v1/layers/**"
+                - "fastvideo/v1/attention/**"
+              config:
+                command: ".buildkite/scripts/run_tests.sh transformer"
+    timeout_in_minutes: 30
+    retry:
+      automatic:
+        - exit_status: -1
+          limit: 2
+        - exit_status: 255
+          limit: 2
+    env:
+      BUILDKITE_CLEAN_CHECKOUT: "true"
+      TEST_TYPE: "transformer"
+    agents:
+      queue: "default"
 
   # - label: ":test_tube: SSIM Tests"
   #   command: ".buildkite/scripts/run_tests.sh ssim"
