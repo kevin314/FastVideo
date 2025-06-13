@@ -70,32 +70,17 @@ steps:
     agents:
       queue: "default"
 
-  # - label: ":test_tube: SSIM Tests"
-  #   command: ".buildkite/scripts/run_tests.sh ssim"
-  #   timeout_in_minutes: 60
-  #   retry:
-  #     automatic:
-  #       - exit_status: -1
-  #         limit: 2
-  #       - exit_status: 255
-  #         limit: 2
-  #   env:
-  #     BUILDKITE_CLEAN_CHECKOUT: "true"
-  #     TEST_TYPE: "ssim"
-  #   agents:
-  #     queue: "default"
-
-  # - label: ":rocket: All Tests"
-  #   command: ".buildkite/scripts/run_tests.sh all"
-  #   timeout_in_minutes: 120
-  #   retry:
-  #     automatic:
-  #       - exit_status: -1
-  #         limit: 2
-  #       - exit_status: 255
-  #         limit: 2
-  #   env:
-  #     BUILDKITE_CLEAN_CHECKOUT: "true"
-  #     TEST_TYPE: "all"
-  #   agents:
-  #     queue: "default"
+  - label: ":test_tube: SSIM Tests"
+    command: ".buildkite/scripts/run_tests.sh ssim"
+    timeout_in_minutes: 60
+    retry:
+      automatic:
+        - exit_status: -1
+          limit: 2
+        - exit_status: 255
+          limit: 2
+    env:
+      BUILDKITE_CLEAN_CHECKOUT: "true"
+      TEST_TYPE: "ssim"
+    agents:
+      queue: "default"
