@@ -33,7 +33,8 @@ def run_encoder_tests():
         "/bin/bash", "-c", command
     ], stdout=sys.stdout, stderr=sys.stderr, check=False)
     
-    return result.returncode
+    # Exit with the same code as the test
+    sys.exit(result.returncode)
 
 @app.function(gpu="L40S:1", image=image, timeout=1800)
 def run_vae_tests():
@@ -54,7 +55,8 @@ def run_vae_tests():
         "/bin/bash", "-c", command
     ], stdout=sys.stdout, stderr=sys.stderr, check=False)
     
-    return result.returncode
+    # Exit with the same code as the test
+    sys.exit(result.returncode)
 
 @app.function(gpu="L40S:1", image=image, timeout=1800)
 def run_transformer_tests():
@@ -75,7 +77,8 @@ def run_transformer_tests():
         "/bin/bash", "-c", command
     ], stdout=sys.stdout, stderr=sys.stderr, check=False)
     
-    return result.returncode
+    # Exit with the same code as the test
+    sys.exit(result.returncode)
 
 @app.function(gpu="L40S:2", image=image, timeout=3600)
 def run_ssim_tests():
@@ -96,7 +99,8 @@ def run_ssim_tests():
         "/bin/bash", "-c", command
     ], stdout=sys.stdout, stderr=sys.stderr, check=False)
     
-    return result.returncode
+    # Exit with the same code as the test
+    sys.exit(result.returncode)
 
 # Keep the original function for basic testing
 @app.function(gpu="L40S:2", image=image, timeout=600)
