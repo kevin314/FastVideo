@@ -15,7 +15,7 @@ steps:
                 - "fastvideo/v1/models/loaders/**"
                 - "fastvideo/v1/tests/encoders/**"
               config:
-                command: "timeout 30m .buildkite/scripts/run_tests.sh encoder"
+                command: "timeout 30m .buildkite/scripts/pr_test.sh"
                 label: "Encoder Tests"
                 env:
                   - BUILDKITE_CLEAN_CHECKOUT=true
@@ -27,7 +27,7 @@ steps:
                 - "fastvideo/v1/models/loaders/**"
                 - "fastvideo/v1/tests/vaes/**"
               config:
-                command: "timeout 30m .buildkite/scripts/run_tests.sh vae"
+                command: "timeout 30m .buildkite/scripts/pr_test.sh"
                 label: "VAE Tests"
                 env:
                   - BUILDKITE_CLEAN_CHECKOUT=true
@@ -41,7 +41,7 @@ steps:
                 - "fastvideo/v1/layers/**"
                 - "fastvideo/v1/attention/**"
               config:
-                command: "timeout 30m .buildkite/scripts/run_tests.sh transformer"
+                command: "timeout 30m .buildkite/scripts/pr_test.sh"
                 label: "Transformer Tests"
                 env:
                   - BUILDKITE_CLEAN_CHECKOUT=true
@@ -50,7 +50,7 @@ steps:
                   queue: "default"
             - path: "fastvideo/v1/**/*.py"
               config:
-                command: "timeout 60m .buildkite/scripts/run_tests.sh ssim"
+                command: "timeout 2m .buildkite/scripts/pr_test.sh"
                 label: "SSIM Tests"
                 env:
                   - BUILDKITE_CLEAN_CHECKOUT=true
