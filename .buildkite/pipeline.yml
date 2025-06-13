@@ -11,7 +11,10 @@ steps:
                 - "fastvideo/v1/models/loaders/**"
                 - "fastvideo/v1/tests/encoders/**"
               config:
-                command: ".buildkite/scripts/run_tests.sh encoder"
+                command: |
+                  echo "Current working directory: $(pwd)"
+                  ls -la
+                  .buildkite/scripts/run_tests.sh encoder
                 label: "Encoder Tests"
                 timeout_in_minutes: 30
                 env:
@@ -24,7 +27,10 @@ steps:
                 - "fastvideo/v1/models/loaders/**"
                 - "fastvideo/v1/tests/vaes/**"
               config:
-                command: ".buildkite/scripts/run_tests.sh vae"
+                command: |
+                  echo "Current working directory: $(pwd)"
+                  ls -la
+                  .buildkite/scripts/run_tests.sh vae
                 label: "VAE Tests"
                 timeout_in_minutes: 30
                 env:
@@ -39,7 +45,10 @@ steps:
                 - "fastvideo/v1/layers/**"
                 - "fastvideo/v1/attention/**"
               config:
-                command: ".buildkite/scripts/run_tests.sh transformer"
+                command: |
+                  echo "Current working directory: $(pwd)"
+                  ls -la
+                  .buildkite/scripts/run_tests.sh transformer
                 label: "Transformer Tests"
                 timeout_in_minutes: 30
                 env:
@@ -49,7 +58,10 @@ steps:
                   queue: "default"
             - path: "fastvideo/v1/tests/ssim/**"
               config:
-                command: ".buildkite/scripts/run_tests.sh ssim"
+                command: |
+                  echo "Current working directory: $(pwd)"
+                  ls -la
+                  .buildkite/scripts/run_tests.sh ssim
                 label: "SSIM Tests"
                 timeout_in_minutes: 60
                 env:
