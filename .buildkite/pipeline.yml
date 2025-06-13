@@ -11,6 +11,8 @@ steps:
               config:
                 command: |
                   echo "Current working directory: $(pwd)"
+                  echo "Changed files in encoder paths:"
+                  git diff --name-only $BUILDKITE_PULL_REQUEST_BASE_BRANCH | grep -E "fastvideo/v1/models/encoders/|fastvideo/v1/models/loaders/|fastvideo/v1/tests/encoders/"
                   ls -la
                   chmod +x .buildkite/scripts/run_tests.sh
                   .buildkite/scripts/run_tests.sh encoder
@@ -28,6 +30,8 @@ steps:
               config:
                 command: |
                   echo "Current working directory: $(pwd)"
+                  echo "Changed files in VAE paths:"
+                  git diff --name-only $BUILDKITE_PULL_REQUEST_BASE_BRANCH | grep -E "fastvideo/v1/models/vaes/|fastvideo/v1/models/loaders/|fastvideo/v1/tests/vaes/"
                   ls -la
                   chmod +x .buildkite/scripts/run_tests.sh
                   .buildkite/scripts/run_tests.sh vae
@@ -47,6 +51,8 @@ steps:
               config:
                 command: |
                   echo "Current working directory: $(pwd)"
+                  echo "Changed files in transformer paths:"
+                  git diff --name-only $BUILDKITE_PULL_REQUEST_BASE_BRANCH | grep -E "fastvideo/v1/models/dits/|fastvideo/v1/models/loaders/|fastvideo/v1/tests/transformers/|fastvideo/v1/layers/|fastvideo/v1/attention/"
                   ls -la
                   chmod +x .buildkite/scripts/run_tests.sh
                   .buildkite/scripts/run_tests.sh transformer
@@ -61,6 +67,8 @@ steps:
               config:
                 command: |
                   echo "Current working directory: $(pwd)"
+                  echo "Changed files in SSIM paths:"
+                  git diff --name-only $BUILDKITE_PULL_REQUEST_BASE_BRANCH | grep -E "fastvideo/v1/tests/ssim/"
                   ls -la
                   chmod +x .buildkite/scripts/run_tests.sh
                   .buildkite/scripts/run_tests.sh ssim
