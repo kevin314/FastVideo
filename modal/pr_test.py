@@ -17,13 +17,16 @@ def run_encoder_tests():
     """Run encoder tests on L40S GPU"""
     import subprocess
     import sys
-
+    import os
+    
+    os.chdir("/FastVideo")
+    
     command = """
     source /opt/conda/etc/profile.d/conda.sh && 
     conda activate fastvideo-dev && 
     pytest ./fastvideo/v1/tests/encoders -s
     """
-
+    
     result = subprocess.run([
         "/bin/bash", "-c", command
     ], stdout=sys.stdout, stderr=sys.stderr, check=False)
@@ -35,13 +38,16 @@ def run_vae_tests():
     """Run VAE tests on L40S GPU"""
     import subprocess
     import sys
-
+    import os
+    
+    os.chdir("/FastVideo")
+    
     command = """
     source /opt/conda/etc/profile.d/conda.sh && 
     conda activate fastvideo-dev && 
     pytest ./fastvideo/v1/tests/vaes -s
     """
-
+    
     result = subprocess.run([
         "/bin/bash", "-c", command
     ], stdout=sys.stdout, stderr=sys.stderr, check=False)
@@ -53,13 +59,16 @@ def run_transformer_tests():
     """Run transformer tests on L40S GPU"""
     import subprocess
     import sys
-
+    import os
+    
+    os.chdir("/FastVideo")
+    
     command = """
     source /opt/conda/etc/profile.d/conda.sh && 
     conda activate fastvideo-dev && 
     pytest ./fastvideo/v1/tests/transformers -s
     """
-
+    
     result = subprocess.run([
         "/bin/bash", "-c", command
     ], stdout=sys.stdout, stderr=sys.stderr, check=False)
@@ -71,13 +80,16 @@ def run_ssim_tests():
     """Run SSIM tests on 2x L40S GPUs"""
     import subprocess
     import sys
-
+    import os
+    
+    os.chdir("/FastVideo")
+    
     command = """
     source /opt/conda/etc/profile.d/conda.sh && 
     conda activate fastvideo-dev && 
     pytest ./fastvideo/v1/tests/ssim -vs
     """
-
+    
     result = subprocess.run([
         "/bin/bash", "-c", command
     ], stdout=sys.stdout, stderr=sys.stderr, check=False)
