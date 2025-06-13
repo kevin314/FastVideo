@@ -48,14 +48,12 @@ fi
 
 MODAL_TEST_FILE="modal/pr_test.py"
 
-# Check if TEST_TYPE is set
 if [ -z "${TEST_TYPE:-}" ]; then
     log "Error: TEST_TYPE environment variable is not set"
     exit 1
 fi
 log "Test type: $TEST_TYPE"
 
-# Run the appropriate Modal test
 case "$TEST_TYPE" in
     "encoder")
         log "Running encoder tests..."

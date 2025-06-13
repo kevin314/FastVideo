@@ -1,5 +1,4 @@
 # SPDX-License-Identifier: Apache-2.0
-# test_build_trigger
 # TODO: check if correct
 import os
 
