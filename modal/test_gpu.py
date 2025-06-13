@@ -1,9 +1,7 @@
 import modal
 
 app = modal.App()
-# image = modal.Image.debian_slim().pip_install("torch")
 
-# Base image for all tests
 image = (
     modal.Image.from_registry("ghcr.io/hao-ai-lab/fastvideo/fastvideo-dev:py3.12-latest", add_python="3.12")
     .apt_install("cmake", "pkg-config", "build-essential", "curl", "libssl-dev")
@@ -33,7 +31,6 @@ def run_encoder_tests():
         "/bin/bash", "-c", command
     ], stdout=sys.stdout, stderr=sys.stderr, check=False)
     
-    # Exit with the same code as the test
     sys.exit(result.returncode)
 
 @app.function(gpu="L40S:1", image=image, timeout=1800)
@@ -55,7 +52,6 @@ def run_vae_tests():
         "/bin/bash", "-c", command
     ], stdout=sys.stdout, stderr=sys.stderr, check=False)
     
-    # Exit with the same code as the test
     sys.exit(result.returncode)
 
 @app.function(gpu="L40S:1", image=image, timeout=1800)
@@ -77,7 +73,6 @@ def run_transformer_tests():
         "/bin/bash", "-c", command
     ], stdout=sys.stdout, stderr=sys.stderr, check=False)
     
-    # Exit with the same code as the test
     sys.exit(result.returncode)
 
 @app.function(gpu="L40S:2", image=image, timeout=3600)
@@ -99,29 +94,4 @@ def run_ssim_tests():
         "/bin/bash", "-c", command
     ], stdout=sys.stdout, stderr=sys.stderr, check=False)
     
-    # Exit with the same code as the test
     sys.exit(result.returncode)
-
-# Keep the original function for basic testing
-@app.function(gpu="L40S:2", image=image, timeout=600)
-def run():
-    """Basic test function"""
-    import subprocess
-    import sys
-    
-    command = """
-    source /opt/conda/etc/profile.d/conda.sh && 
-    conda activate fastvideo-dev && 
-    echo 'Checking fastvideo installation:' && 
-    pip show fastvideo && 
-    echo 'Testing torch:' && 
-    python -c 'import torch; print("Torch CUDA:", torch.cuda.is_available())' && 
-    echo 'Running fastvideo:' && 
-    
-    """
-    
-    result = subprocess.run([
-        "/bin/bash", "-c", command
-    ], stdout=sys.stdout, stderr=sys.stderr, check=True)
-    
-    return result
