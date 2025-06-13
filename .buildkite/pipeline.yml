@@ -4,7 +4,7 @@ steps:
       - monorepo-diff#v1.4.0:
           diff: "git diff --name-only $BUILDKITE_PULL_REQUEST_BASE_BRANCH"
           env:
-            - BUILDKITE_CLEAN_CHECKOUT: "true"
+            - BUILDKITE_CLEAN_CHECKOUT=true
           watch:
             - path: 
                 - "fastvideo/v1/models/encoders/**"
@@ -15,8 +15,8 @@ steps:
                 label: "Encoder Tests"
                 timeout_in_minutes: 30
                 env:
-                  - BUILDKITE_CLEAN_CHECKOUT: "true"
-                  - TEST_TYPE: "encoder"
+                  - BUILDKITE_CLEAN_CHECKOUT=true
+                  - TEST_TYPE=encoder
                 agents:
                   queue: "default"
             - path:
@@ -28,8 +28,8 @@ steps:
                 label: "VAE Tests"
                 timeout_in_minutes: 30
                 env:
-                  - BUILDKITE_CLEAN_CHECKOUT: "true"
-                  - TEST_TYPE: "vae"
+                  - BUILDKITE_CLEAN_CHECKOUT=true
+                  - TEST_TYPE=vae
                 agents:
                   queue: "default"
             - path:
@@ -43,8 +43,8 @@ steps:
                 label: "Transformer Tests"
                 timeout_in_minutes: 30
                 env:
-                  - BUILDKITE_CLEAN_CHECKOUT: "true"
-                  - TEST_TYPE: "transformer"
+                  - BUILDKITE_CLEAN_CHECKOUT=true
+                  - TEST_TYPE=transformer
                 agents:
                   queue: "default"
             - path: "fastvideo/v1/tests/ssim/**"
@@ -53,8 +53,8 @@ steps:
                 label: "SSIM Tests"
                 timeout_in_minutes: 60
                 env:
-                  - BUILDKITE_CLEAN_CHECKOUT: "true"
-                  - TEST_TYPE: "ssim"
+                  - BUILDKITE_CLEAN_CHECKOUT=true
+                  - TEST_TYPE=ssim
                 agents:
                   queue: "default"
 
