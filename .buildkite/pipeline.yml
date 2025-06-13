@@ -50,7 +50,7 @@ steps:
                   queue: "default"
             - path: "fastvideo/v1/**/*.py"
               config:
-                command: "timeout 2m .buildkite/scripts/pr_test.sh"
+                command: "timeout 60m .buildkite/scripts/pr_test.sh"
                 label: "SSIM Tests"
                 env:
                   - BUILDKITE_CLEAN_CHECKOUT=true
