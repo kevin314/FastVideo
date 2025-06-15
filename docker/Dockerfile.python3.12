@@ -23,6 +23,7 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
 # Create and activate virtual environment with specific Python version and seed
 RUN source $HOME/.local/bin/env && \
     uv venv --python 3.12 --seed /opt/venv && \
+    source /opt/venv/bin/activate && \
     uv pip install --no-cache-dir --upgrade pip && \
     uv pip install --no-cache-dir .[dev] && \
     uv pip install --no-cache-dir flash-attn==2.7.4.post1 --no-build-isolation
@@ -39,6 +40,7 @@ COPY . .
 
 # Install dependencies using uv and set up shell configuration
 RUN source $HOME/.local/bin/env && \
+    source /opt/venv/bin/activate && \
     uv pip install --no-cache-dir -e .[dev] && \
     git config --unset-all http.https://github.com/.extraheader || true && \
     echo 'source /opt/venv/bin/activate' >> /root/.bashrc && \
