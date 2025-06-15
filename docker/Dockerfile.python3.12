@@ -20,27 +20,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
     echo 'source $HOME/.local/bin/env' >> /root/.bashrc
 
-# Create and activate virtual environment with specific Python version and seed
-RUN source $HOME/.local/bin/env && \
-    uv venv --python 3.12 --seed /opt/venv && \
-    source /opt/venv/bin/activate && \
-    uv pip install --no-cache-dir --upgrade pip && \
-    uv pip install --no-cache-dir .[dev] && \
-    uv pip install --no-cache-dir flash-attn==2.7.4.post1 --no-build-isolation
-
-ENV PATH="/opt/venv/bin:$PATH"
-
 # Copy just the pyproject.toml first to leverage Docker cache
 COPY pyproject.toml ./
 
 # Create a dummy README to satisfy the installation
 RUN echo "# Placeholder" > README.md
 
+# Create and activate virtual environment with specific Python version and seed
+RUN source $HOME/.local/bin/env && \
+    uv venv --python 3.12 --seed /opt/venv
+
+# Install packages in the virtual environment
+RUN source /opt/venv/bin/activate && \
+    uv pip install --no-cache-dir --upgrade pip && \
+    uv pip install --no-cache-dir .[dev] && \
+    uv pip install --no-cache-dir flash-attn==2.7.4.post1 --no-build-isolation
+
 COPY . .
 
 # Install dependencies using uv and set up shell configuration
-RUN source $HOME/.local/bin/env && \
-    source /opt/venv/bin/activate && \
+RUN source /opt/venv/bin/activate && \
     uv pip install --no-cache-dir -e .[dev] && \
     git config --unset-all http.https://github.com/.extraheader || true && \
     echo 'source /opt/venv/bin/activate' >> /root/.bashrc && \
