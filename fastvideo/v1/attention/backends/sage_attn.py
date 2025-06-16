@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
 from typing import List, Optional, Type
 
 import torch

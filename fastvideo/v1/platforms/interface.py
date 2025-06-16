@@ -13,12 +13,11 @@ from fastvideo.v1.logger import init_logger
 logger = init_logger(__name__)
 
 
-class AttentionBackendEnum(enum.Enum):
+class _Backend(enum.Enum):
     FLASH_ATTN = enum.auto()
     SLIDING_TILE_ATTN = enum.auto()
     TORCH_SDPA = enum.auto()
     SAGE_ATTN = enum.auto()
-    VIDEO_SPARSE_ATTN = enum.auto()
     NO_ATTENTION = enum.auto()
 
 
@@ -88,8 +87,7 @@ class Platform:
         return self._enum == PlatformEnum.CUDA
 
     @classmethod
-    def get_attn_backend_cls(cls,
-                             selected_backend: Optional[AttentionBackendEnum],
+    def get_attn_backend_cls(cls, selected_backend: Optional[_Backend],
                              head_size: int, dtype: torch.dtype) -> str:
         """Get the attention backend class of a device."""
         return ""

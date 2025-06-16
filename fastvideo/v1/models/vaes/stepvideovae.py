@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
 # Copyright 2025 StepFun Inc. All Rights Reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy

@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
 from dataclasses import dataclass, field
 from typing import Callable, Tuple, TypedDict
 
@@ -80,7 +79,7 @@ class HunyuanConfig(PipelineConfig):
                      (llama_postprocess_text, clip_postprocess_text))
 
     # Precision for each component
-    dit_precision: str = "bf16"
+    precision: str = "bf16"
     vae_precision: str = "fp16"
     text_encoder_precisions: Tuple[str, ...] = field(
         default_factory=lambda: ("fp16", "fp16"))

@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
 # schema.py
 """
 Unified data schema and format for saving and loading image/video data after

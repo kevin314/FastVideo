@@ -6,7 +6,7 @@ import torch
 from torch import nn
 
 from fastvideo.v1.configs.models import DiTConfig
-from fastvideo.v1.platforms import AttentionBackendEnum
+from fastvideo.v1.platforms import _Backend
 
 
 # TODO
@@ -19,7 +19,7 @@ class BaseDiT(nn.Module, ABC):
     num_channels_latents: int
     # always supports torch_sdpa
     _supported_attention_backends: Tuple[
-        AttentionBackendEnum, ...] = DiTConfig()._supported_attention_backends
+        _Backend, ...] = DiTConfig()._supported_attention_backends
 
     def __init_subclass__(cls) -> None:
         required_class_attrs = [
@@ -65,7 +65,7 @@ class BaseDiT(nn.Module, ABC):
                 )
 
     @property
-    def supported_attention_backends(self) -> Tuple[AttentionBackendEnum, ...]:
+    def supported_attention_backends(self) -> Tuple[_Backend, ...]:
         return self._supported_attention_backends
 
 
@@ -85,7 +85,7 @@ class CachableDiT(BaseDiT):
     num_channels_latents: int
     # always supports torch_sdpa
     _supported_attention_backends: Tuple[
-        AttentionBackendEnum, ...] = DiTConfig()._supported_attention_backends
+        _Backend, ...] = DiTConfig()._supported_attention_backends
 
     def __init__(self, config: DiTConfig, **kwargs) -> None:
         super().__init__(config, **kwargs)

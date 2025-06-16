@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
 # type: ignore
 # Copyright 2025 StepFun Inc. All Rights Reserved.
 #

@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
 import argparse
 
 import numpy as np
@@ -15,7 +14,7 @@ def setup_args():
     parser = argparse.ArgumentParser(description='T5 Encoder Test')
     parser.add_argument('--model_path', type=str, default="google/umt5-xxl")
     parser.add_argument(
-        '--dit-precision',
+        '--precision',
         type=str,
         default="float32",
         help='Precision to use for the model (float32, float16, bfloat16)')

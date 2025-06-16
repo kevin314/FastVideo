@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
 from abc import ABC, abstractmethod
 from typing import Optional, Tuple
 
@@ -8,13 +7,12 @@ from torch import nn
 from fastvideo.v1.configs.models.encoders import (BaseEncoderOutput,
                                                   ImageEncoderConfig,
                                                   TextEncoderConfig)
-from fastvideo.v1.platforms import AttentionBackendEnum
+from fastvideo.v1.platforms import _Backend
 
 
 class TextEncoder(nn.Module, ABC):
     _supported_attention_backends: Tuple[
-        AttentionBackendEnum,
-        ...] = TextEncoderConfig()._supported_attention_backends
+        _Backend, ...] = TextEncoderConfig()._supported_attention_backends
 
     def __init__(self, config: TextEncoderConfig) -> None:
         super().__init__()
@@ -35,14 +33,13 @@ class TextEncoder(nn.Module, ABC):
         pass
 
     @property
-    def supported_attention_backends(self) -> Tuple[AttentionBackendEnum, ...]:
+    def supported_attention_backends(self) -> Tuple[_Backend, ...]:
         return self._supported_attention_backends
 
 
 class ImageEncoder(nn.Module, ABC):
     _supported_attention_backends: Tuple[
-        AttentionBackendEnum,
-        ...] = ImageEncoderConfig()._supported_attention_backends
+        _Backend, ...] = ImageEncoderConfig()._supported_attention_backends
 
     def __init__(self, config: ImageEncoderConfig) -> None:
         super().__init__()
@@ -58,5 +55,5 @@ class ImageEncoder(nn.Module, ABC):
         pass
 
     @property
-    def supported_attention_backends(self) -> Tuple[AttentionBackendEnum, ...]:
+    def supported_attention_backends(self) -> Tuple[_Backend, ...]:
         return self._supported_attention_backends
