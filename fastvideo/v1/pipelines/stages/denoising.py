@@ -21,7 +21,7 @@ from fastvideo.v1.forward_context import set_forward_context
 from fastvideo.v1.logger import init_logger
 from fastvideo.v1.pipelines.pipeline_batch_info import ForwardBatch
 from fastvideo.v1.pipelines.stages.base import PipelineStage
-from fastvideo.v1.platforms import _Backend
+from fastvideo.v1.platforms import AttentionBackendEnum
 
 st_attn_available = False
 if importlib.util.find_spec("st_attn") is not None:
@@ -54,10 +54,11 @@ class DenoisingStage(PipelineStage):
         self.attn_backend = get_attn_backend(
             head_size=attn_head_size,
             dtype=torch.float16,  # TODO(will): hack
-            supported_attention_backends=(_Backend.SLIDING_TILE_ATTN,
-                                          _Backend.VIDEO_SPARSE_ATTN,
-                                          _Backend.FLASH_ATTN,
-                                          _Backend.TORCH_SDPA)  # hack
+            supported_attention_backends=(
+                AttentionBackendEnum.SLIDING_TILE_ATTN,
+                AttentionBackendEnum.VIDEO_SPARSE_ATTN,
+                AttentionBackendEnum.FLASH_ATTN, AttentionBackendEnum.TORCH_SDPA
+            )  # hack
         )
 
     def forward(
@@ -194,13 +195,15 @@ class DenoisingStage(PipelineStage):
 
                 # Prepare inputs for transformer
                 t_expand = t.repeat(latent_model_input.shape[0])
-                guidance_expand = (torch.tensor(
-                    [fastvideo_args.embedded_cfg_scale] *
-                    latent_model_input.shape[0],
-                    dtype=torch.float32,
-                    device=get_torch_device(),
-                ).to(target_dtype) * 1000.0 if fastvideo_args.embedded_cfg_scale
-                                   is not None else None)
+                guidance_expand = (
+                    torch.tensor(
+                        [fastvideo_args.pipeline_config.embedded_cfg_scale] *
+                        latent_model_input.shape[0],
+                        dtype=torch.float32,
+                        device=get_torch_device(),
+                    ).to(target_dtype) *
+                    1000.0 if fastvideo_args.pipeline_config.embedded_cfg_scale
+                    is not None else None)
 
                 # Predict noise residual
                 with torch.autocast(device_type="cuda",
