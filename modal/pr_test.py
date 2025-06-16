@@ -9,7 +9,7 @@ image = (
     .run_commands("echo 'source ~/.cargo/env' >> ~/.bashrc")
     .env({"PATH": "/root/.cargo/bin:$PATH"})
     .pip_install("torch==2.7.1", "pytest")
-    .run_commands("/bin/bash -c 'source /opt/venv/bin/activate && cd /FastVideo && uv pip install -e .[test]'")
+    .run_commands("/bin/bash -c 'source $HOME/.local/bin/env && source /opt/venv/bin/activate && cd /FastVideo && uv pip install -e .[test]'")
 )
 
 @app.function(gpu="L40S:1", image=image, timeout=1800)
