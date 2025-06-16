@@ -3,12 +3,12 @@ import modal
 app = modal.App()
 
 image = (
-    modal.Image.from_registry("ghcr.io/hao-ai-lab/fastvideo/fastvideo-dev:py3.12-latest", add_python="3.12")
+    modal.Image.from_registry("ghcr.io/kevin314/fastvideo/fastvideo-dev:py3.12-latest", add_python="3.12")
     .apt_install("cmake", "pkg-config", "build-essential", "curl", "libssl-dev")
     .run_commands("curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable")
     .run_commands("echo 'source ~/.cargo/env' >> ~/.bashrc")
     .env({"PATH": "/root/.cargo/bin:$PATH"})
-    .pip_install("torch==2.6.0", "pytest")
+    .pip_install("torch==2.7.1", "pytest")
     .run_commands("/bin/bash -c 'source /opt/conda/etc/profile.d/conda.sh && conda activate fastvideo-dev && cd /FastVideo && pip install -e .[test]'")
 )
 
