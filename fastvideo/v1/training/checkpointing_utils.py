@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
 import random
 from typing import Any, Dict, Optional
 

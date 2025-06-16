@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
 # type: ignore
 # SPDX-License-Identifier: Apache-2.0
 """
@@ -9,6 +8,7 @@ using the modular pipeline architecture.
 """
 
 import os
+from copy import deepcopy
 from typing import Any, Dict
 
 import torch
@@ -101,21 +101,21 @@ class StepVideoPipeline(LoRAPipeline, ComposedPipelineBase):
         """
         Load the modules from the config.
         """
-        model_index = self._load_config(self.model_path)
-        logger.info("Loading pipeline modules from config: %s", model_index)
+        logger.info("Loading pipeline modules from config: %s", self.config)
+        modules_config = deepcopy(self.config)
 
         # remove keys that are not pipeline modules
-        model_index.pop("_class_name")
-        model_index.pop("_diffusers_version")
+        modules_config.pop("_class_name")
+        modules_config.pop("_diffusers_version")
 
         # some sanity checks
         assert len(
-            model_index
+            modules_config
         ) > 1, "model_index.json must contain at least one pipeline module"
 
         required_modules = ["transformer", "scheduler", "vae"]
         for module_name in required_modules:
-            if module_name not in model_index:
+            if module_name not in modules_config:
                 raise ValueError(
                     f"model_index.json must contain a {module_name} module")
         logger.info("Diffusers config passed sanity checks")
@@ -123,7 +123,7 @@ class StepVideoPipeline(LoRAPipeline, ComposedPipelineBase):
         # all the component models used by the pipeline
         modules = {}
         for module_name, (transformers_or_diffusers,
-                          architecture) in model_index.items():
+                          architecture) in modules_config.items():
             component_model_path = os.path.join(self.model_path, module_name)
             module = PipelineComponentLoader.load_module(
                 module_name=module_name,

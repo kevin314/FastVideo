@@ -7,7 +7,7 @@ OUTPUT_DIR="data/crush-smol/latents"
 VALIDATION_PATH="assets/prompt.txt"
 
 torchrun --nproc_per_node=$GPU_NUM \
-    fastvideo/v1/pipelines/preprocess/v1_preprocess.py \
+    fastvideo/data_preprocess/preprocess.py \
     --model_path $MODEL_PATH \
     --data_merge_path $DATA_MERGE_PATH \
     --preprocess_video_batch_size 1 \

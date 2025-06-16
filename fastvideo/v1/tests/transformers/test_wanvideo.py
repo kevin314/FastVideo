@@ -6,7 +6,6 @@ import pytest
 import torch
 from diffusers import WanTransformer3DModel
 
-from fastvideo.v1.configs.pipelines import PipelineConfig
 from fastvideo.v1.forward_context import set_forward_context
 from fastvideo.v1.fastvideo_args import FastVideoArgs
 from fastvideo.v1.logger import init_logger
@@ -35,8 +34,10 @@ def test_wan_transformer():
     precision_str = "bf16"
     args = FastVideoArgs(model_path=TRANSFORMER_PATH,
                          use_cpu_offload=False,
-                         pipeline_config=PipelineConfig(dit_config=WanVideoConfig(), dit_precision=precision_str))
+                         precision=precision_str)
     args.device = device
+    args.dit_config = WanVideoConfig()
+    args.check_fastvideo_args()
 
     loader = TransformerLoader()
     model2 = loader.load(TRANSFORMER_PATH, "", args).to(device, dtype=precision)

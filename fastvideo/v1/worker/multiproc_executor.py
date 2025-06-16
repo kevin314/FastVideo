@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
 import atexit
 import contextlib
 import multiprocessing as mp

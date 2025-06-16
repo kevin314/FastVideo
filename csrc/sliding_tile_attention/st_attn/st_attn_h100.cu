@@ -829,4 +829,3 @@ sta_forward(torch::Tensor q, torch::Tensor k, torch::Tensor v, torch::Tensor o, 
     return o;
     cudaDeviceSynchronize();
 }
-

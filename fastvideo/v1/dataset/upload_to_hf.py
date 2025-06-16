@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
 from huggingface_hub import HfApi, upload_folder
 
 api = HfApi()

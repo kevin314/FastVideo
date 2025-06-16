@@ -8,11 +8,13 @@ This module defines the base class for pipelines that are composed of multiple s
 import argparse
 import os
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from typing import Any, Dict, List, Optional, Union, cast
 
 import torch
 
-from fastvideo.v1.configs.pipelines import PipelineConfig
+from fastvideo.v1.configs.pipelines import (PipelineConfig,
+                                            get_pipeline_config_cls_for_name)
 from fastvideo.v1.distributed import (
     maybe_init_distributed_environment_and_model_parallel)
 from fastvideo.v1.fastvideo_args import FastVideoArgs, TrainingArgs
@@ -20,7 +22,7 @@ from fastvideo.v1.logger import init_logger
 from fastvideo.v1.models.loader.component_loader import PipelineComponentLoader
 from fastvideo.v1.pipelines.pipeline_batch_info import ForwardBatch
 from fastvideo.v1.pipelines.stages import PipelineStage
-from fastvideo.v1.utils import (maybe_download_model,
+from fastvideo.v1.utils import (maybe_download_model, shallow_asdict,
                                 verify_model_config_and_directory)
 
 logger = init_logger(__name__)
@@ -44,16 +46,24 @@ class ComposedPipelineBase(ABC):
     # TODO(will): args should support both inference args and training args
     def __init__(self,
                  model_path: str,
-                 fastvideo_args: Union[FastVideoArgs, TrainingArgs],
+                 fastvideo_args: FastVideoArgs,
+                 config: Optional[Dict[str, Any]] = None,
                  required_config_modules: Optional[List[str]] = None,
                  loaded_modules: Optional[Dict[str, torch.nn.Module]] = None):
         """
         Initialize the pipeline. After __init__, the pipeline should be ready to
         use. The pipeline should be stateless and not hold any batch state.
         """
-        self.fastvideo_args = fastvideo_args
 
-        self.model_path: str = model_path
+        if fastvideo_args.training_mode:
+            assert isinstance(fastvideo_args, TrainingArgs)
+            self.training_args = fastvideo_args
+            assert self.training_args is not None
+        else:
+            self.fastvideo_args = fastvideo_args
+            assert self.fastvideo_args is not None
+
+        self.model_path = model_path
         self._stages: List[PipelineStage] = []
         self._stage_name_mapping: Dict[str, PipelineStage] = {}
 
@@ -64,6 +74,13 @@ class ComposedPipelineBase(ABC):
             raise NotImplementedError(
                 "Subclass must set _required_config_modules")
 
+        if config is None:
+            # Load configuration
+            logger.info("Loading pipeline configuration...")
+            self.config = self._load_config(model_path)
+        else:
+            self.config = config
+
         maybe_init_distributed_environment_and_model_parallel(
             fastvideo_args.tp_size, fastvideo_args.sp_size)
 
@@ -72,8 +89,6 @@ class ComposedPipelineBase(ABC):
         self.modules = self.load_modules(fastvideo_args, loaded_modules)
 
         if fastvideo_args.training_mode:
-            assert isinstance(fastvideo_args, TrainingArgs)
-            self.training_args = fastvideo_args
             assert self.training_args is not None
             if self.training_args.log_validation:
                 self.initialize_validation_pipeline(self.training_args)
@@ -112,16 +127,39 @@ class ComposedPipelineBase(ABC):
         loaded_modules: Optional[Dict[str, torch.nn.Module]] = None,
         If provided, loaded_modules will be used instead of loading from config/pretrained weights.
         """
-        if args is None or args.inference_mode:
+        config = None
+        # 1. If users provide a pipeline config, it will override the default pipeline config
+        if isinstance(pipeline_config, PipelineConfig):
+            config = pipeline_config
+        else:
+            config_cls = get_pipeline_config_cls_for_name(model_path)
+            if config_cls is not None:
+                config = config_cls()
+                if isinstance(pipeline_config, str):
+                    config.load_from_json(pipeline_config)
 
-            kwargs['model_path'] = model_path
-            fastvideo_args = FastVideoArgs.from_kwargs(kwargs)
+        # 2. If users also provide some kwargs, it will override the pipeline config.
+        # The user kwargs shouldn't contain model config parameters!
+        if config is None:
+            logger.warning("No config found for model %s, using default config",
+                           model_path)
+            config_args = kwargs
+        else:
+            config_args = shallow_asdict(config)
+            config_args.update(kwargs)
+
+        if args is None or args.inference_mode:
+            fastvideo_args = FastVideoArgs(model_path=model_path, **config_args)
+
+            fastvideo_args.model_path = model_path
+            for key, value in config_args.items():
+                setattr(fastvideo_args, key, value)
         else:
             assert args is not None, "args must be provided for training mode"
             fastvideo_args = TrainingArgs.from_cli_args(args)
             # TODO(will): fix this so that its not so ugly
             fastvideo_args.model_path = model_path
-            for key, value in kwargs.items():
+            for key, value in config_args.items():
                 setattr(fastvideo_args, key, value)
 
             fastvideo_args.use_cpu_offload = False
@@ -132,7 +170,7 @@ class ComposedPipelineBase(ABC):
             # use FSDP2's MixedPrecisionPolicy to set the precision for the
             # fwd, bwd, and other operations' precision.
             # fastvideo_args.precision = fastvideo_args.master_weight_type
-            assert fastvideo_args.pipeline_config.dit_precision == 'fp32', 'only fp32 is supported for training'
+            assert fastvideo_args.master_weight_type == 'fp32', 'only fp32 is supported for training'
             # assert fastvideo_args.precision == 'fp32', 'only fp32 is supported for training'
 
         logger.info("fastvideo_args in from_pretrained: %s", fastvideo_args)
@@ -212,21 +250,20 @@ class ComposedPipelineBase(ABC):
         loaded_modules: Optional[Dict[str, torch.nn.Module]] = None, 
         If provided, loaded_modules will be used instead of loading from config/pretrained weights.
         """
-
-        model_index = self._load_config(self.model_path)
-        logger.info("Loading pipeline modules from config: %s", model_index)
+        logger.info("Loading pipeline modules from config: %s", self.config)
+        modules_config = deepcopy(self.config)
 
         # remove keys that are not pipeline modules
-        model_index.pop("_class_name")
-        model_index.pop("_diffusers_version")
+        modules_config.pop("_class_name")
+        modules_config.pop("_diffusers_version")
 
         # some sanity checks
         assert len(
-            model_index
+            modules_config
         ) > 1, "model_index.json must contain at least one pipeline module"
 
         for module_name in self.required_config_modules:
-            if module_name not in model_index:
+            if module_name not in modules_config:
                 raise ValueError(
                     f"model_index.json must contain a {module_name} module")
 
@@ -236,7 +273,7 @@ class ComposedPipelineBase(ABC):
 
         modules = {}
         for module_name, (transformers_or_diffusers,
-                          architecture) in model_index.items():
+                          architecture) in modules_config.items():
             if module_name not in required_modules:
                 logger.info("Skipping module %s", module_name)
                 continue
