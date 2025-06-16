@@ -67,6 +67,7 @@ class ForwardBatch:
 
     # Latent tensors
     latents: Optional[torch.Tensor] = None
+    raw_latent_shape: Optional[torch.Tensor] = None
     noise_pred: Optional[torch.Tensor] = None
     image_latent: Optional[torch.Tensor] = None
 
@@ -120,6 +121,9 @@ class ForwardBatch:
     is_cfg_negative: bool = False
     mask_search_final_result_pos: Optional[List[List]] = None
     mask_search_final_result_neg: Optional[List[List]] = None
+
+    # VSA parameters
+    VSA_sparsity: float = 0.0
 
     def __post_init__(self):
         """Initialize dependent fields after dataclass initialization."""

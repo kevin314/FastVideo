@@ -21,15 +21,19 @@ from fastvideo.v1.forward_context import set_forward_context
 from fastvideo.v1.logger import init_logger
 from fastvideo.v1.pipelines.pipeline_batch_info import ForwardBatch
 from fastvideo.v1.pipelines.stages.base import PipelineStage
-from fastvideo.v1.platforms import _Backend
+from fastvideo.v1.platforms import AttentionBackendEnum
 
 st_attn_available = False
-spec = importlib.util.find_spec("st_attn")
-if spec is not None:
+if importlib.util.find_spec("st_attn") is not None:
     st_attn_available = True
-
     from fastvideo.v1.attention.backends.sliding_tile_attn import (
         SlidingTileAttentionBackend)
+
+vsa_available = False
+if importlib.util.find_spec("vsa") is not None:
+    vsa_available = True
+    from fastvideo.v1.attention.backends.video_sparse_attn import (
+        VideoSparseAttentionBackend)
 
 logger = init_logger(__name__)
 
@@ -50,9 +54,11 @@ class DenoisingStage(PipelineStage):
         self.attn_backend = get_attn_backend(
             head_size=attn_head_size,
             dtype=torch.float16,  # TODO(will): hack
-            supported_attention_backends=(_Backend.SLIDING_TILE_ATTN,
-                                          _Backend.FLASH_ATTN,
-                                          _Backend.TORCH_SDPA)  # hack
+            supported_attention_backends=(
+                AttentionBackendEnum.SLIDING_TILE_ATTN,
+                AttentionBackendEnum.VIDEO_SPARSE_ATTN,
+                AttentionBackendEnum.FLASH_ATTN, AttentionBackendEnum.TORCH_SDPA
+            )  # hack
         )
 
     def forward(
@@ -102,7 +108,6 @@ class DenoisingStage(PipelineStage):
                                          n=sp_world_size).contiguous()
                 image_latent = image_latent[:, :, rank_in_sp_group, :, :, :]
                 batch.image_latent = image_latent
-
         # Get timesteps and calculate warmup steps
         timesteps = batch.timesteps
         # TODO(will): remove this once we add input/output validation for stages
@@ -190,22 +195,27 @@ class DenoisingStage(PipelineStage):
 
                 # Prepare inputs for transformer
                 t_expand = t.repeat(latent_model_input.shape[0])
-                guidance_expand = (torch.tensor(
-                    [fastvideo_args.embedded_cfg_scale] *
-                    latent_model_input.shape[0],
-                    dtype=torch.float32,
-                    device=get_torch_device(),
-                ).to(target_dtype) * 1000.0 if fastvideo_args.embedded_cfg_scale
-                                   is not None else None)
+                guidance_expand = (
+                    torch.tensor(
+                        [fastvideo_args.pipeline_config.embedded_cfg_scale] *
+                        latent_model_input.shape[0],
+                        dtype=torch.float32,
+                        device=get_torch_device(),
+                    ).to(target_dtype) *
+                    1000.0 if fastvideo_args.pipeline_config.embedded_cfg_scale
+                    is not None else None)
 
                 # Predict noise residual
                 with torch.autocast(device_type="cuda",
                                     dtype=target_dtype,
                                     enabled=autocast_enabled):
-
-                    if st_attn_available and self.attn_backend == SlidingTileAttentionBackend:
+                    if (st_attn_available
+                            and self.attn_backend == SlidingTileAttentionBackend
+                        ) or (vsa_available and self.attn_backend
+                              == VideoSparseAttentionBackend):
                         self.attn_metadata_builder_cls = self.attn_backend.get_builder_cls(
                         )
+
                         if self.attn_metadata_builder_cls is not None:
                             self.attn_metadata_builder = self.attn_metadata_builder_cls(
                             )

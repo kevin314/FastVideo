@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 import torch
 
 from fastvideo.v1.forward_context import set_forward_context
@@ -28,9 +29,9 @@ class StepvideoPromptEncodingStage(PipelineStage):
 
     def forward(self, batch: ForwardBatch, fastvideo_args) -> ForwardBatch:
 
-        prompts = [batch.prompt + fastvideo_args.pos_magic]
+        prompts = [batch.prompt + fastvideo_args.pipeline_config.pos_magic]
         bs = len(prompts)
-        prompts += [fastvideo_args.neg_magic] * bs
+        prompts += [fastvideo_args.pipeline_config.neg_magic] * bs
         with set_forward_context(current_timestep=0, attn_metadata=None):
             y, y_mask = self.stepllm(prompts)
             clip_emb, _ = self.clip(prompts)
