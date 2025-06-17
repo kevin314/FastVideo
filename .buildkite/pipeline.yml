@@ -1,3 +1,6 @@
+env:
+  IMAGE_VERSION: "py3.12-latest"
+
 steps:
   - block: "Start Build"
     blocked_state: "running"
