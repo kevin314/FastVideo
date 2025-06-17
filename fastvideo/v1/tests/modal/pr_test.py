@@ -2,8 +2,14 @@ import modal
 
 app = modal.App()
 
+import os
+
+image_version = os.getenv("IMAGE_VERSION", "latest")
+image_tag = f"ghcr.io/hao-ai-lab/fastvideo/fastvideo-dev:{image_version}"
+print(f"Using image: {image_tag}")
+
 image = (
-    modal.Image.from_registry("ghcr.io/hao-ai-lab/fastvideo/fastvideo-dev:py3.12-latest", add_python="3.12")
+    modal.Image.from_registry(image_tag, add_python="3.12")
     .apt_install("cmake", "pkg-config", "build-essential", "curl", "libssl-dev")
     .run_commands("curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable")
     .run_commands("echo 'source ~/.cargo/env' >> ~/.bashrc")

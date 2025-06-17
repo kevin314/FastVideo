@@ -31,6 +31,9 @@ log "Setting up Modal authentication from Buildkite secrets..."
 MODAL_TOKEN_ID=$(buildkite-agent secret get modal_token_id)
 MODAL_TOKEN_SECRET=$(buildkite-agent secret get modal_token_secret)
 
+# Get image version from Buildkite secrets
+export IMAGE_VERSION=$(buildkite-agent secret get image_version 2>/dev/null || echo "latest")
+
 if [ -n "$MODAL_TOKEN_ID" ] && [ -n "$MODAL_TOKEN_SECRET" ]; then
     log "Retrieved Modal credentials from Buildkite secrets"
     python3 -m modal token set --token-id "$MODAL_TOKEN_ID" --token-secret "$MODAL_TOKEN_SECRET" --profile buildkite-ci --activate --verify
@@ -47,6 +50,8 @@ else
 fi
 
 MODAL_TEST_FILE="fastvideo/v1/tests/modal/pr_test.py"
+
+log "Using image version: $IMAGE_VERSION"
 
 if [ -z "${TEST_TYPE:-}" ]; then
     log "Error: TEST_TYPE environment variable is not set"
