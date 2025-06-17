@@ -15,7 +15,7 @@ log "Project root: $PROJECT_ROOT"
 # Install Modal if not available
 if ! python3 -m modal --version &> /dev/null; then
     log "Modal not found, installing..."
-    pip install modal
+    python3 -m pip install modal
     
     # Verify installation
     if ! python3 -m modal --version &> /dev/null; then
