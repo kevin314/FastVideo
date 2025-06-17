@@ -14,7 +14,6 @@ image = (
     .run_commands("curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable")
     .run_commands("echo 'source ~/.cargo/env' >> ~/.bashrc")
     .env({"PATH": "/root/.cargo/bin:$PATH"})
-    .pip_install("torch==2.7.1", "pytest")
     .run_commands("/bin/bash -c 'source $HOME/.local/bin/env && source /opt/venv/bin/activate && cd /FastVideo && uv pip install -e .[test]'")
 )
 
@@ -28,8 +27,7 @@ def run_encoder_tests():
     os.chdir("/FastVideo")
     
     command = """
-    source /opt/conda/etc/profile.d/conda.sh && 
-    conda activate fastvideo-dev && 
+    source /opt/venv/bin/activate && 
     pytest ./fastvideo/v1/tests/encoders -s
     """
     
@@ -49,8 +47,7 @@ def run_vae_tests():
     os.chdir("/FastVideo")
     
     command = """
-    source /opt/conda/etc/profile.d/conda.sh && 
-    conda activate fastvideo-dev && 
+    source /opt/venv/bin/activate && 
     pytest ./fastvideo/v1/tests/vaes -s
     """
     
@@ -70,8 +67,7 @@ def run_transformer_tests():
     os.chdir("/FastVideo")
     
     command = """
-    source /opt/conda/etc/profile.d/conda.sh && 
-    conda activate fastvideo-dev && 
+    source /opt/venv/bin/activate && 
     pytest ./fastvideo/v1/tests/transformers -s
     """
     
@@ -91,8 +87,7 @@ def run_ssim_tests():
     os.chdir("/FastVideo")
     
     command = """
-    source /opt/conda/etc/profile.d/conda.sh && 
-    conda activate fastvideo-dev && 
+    source /opt/venv/bin/activate && 
     pytest ./fastvideo/v1/tests/ssim -vs
     """
     
