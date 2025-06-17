@@ -46,7 +46,7 @@ else
     exit 1
 fi
 
-MODAL_TEST_FILE="modal/pr_test.py"
+MODAL_TEST_FILE="fastvideo/v1/tests/modal/pr_test.py"
 
 if [ -z "${TEST_TYPE:-}" ]; then
     log "Error: TEST_TYPE environment variable is not set"
@@ -57,19 +57,19 @@ log "Test type: $TEST_TYPE"
 case "$TEST_TYPE" in
     "encoder")
         log "Running encoder tests..."
-        MODAL_COMMAND="python3 -m modal run modal/pr_test.py::run_encoder_tests"
+        MODAL_COMMAND="python3 -m modal run $MODAL_TEST_FILE::run_encoder_tests"
         ;;
     "vae")
         log "Running VAE tests..."
-        MODAL_COMMAND="python3 -m modal run modal/pr_test.py::run_vae_tests"
+        MODAL_COMMAND="python3 -m modal run $MODAL_TEST_FILE::run_vae_tests"
         ;;
     "transformer")
         log "Running transformer tests..."
-        MODAL_COMMAND="python3 -m modal run modal/pr_test.py::run_transformer_tests"
+        MODAL_COMMAND="python3 -m modal run $MODAL_TEST_FILE::run_transformer_tests"
         ;;
     "ssim")
         log "Running SSIM tests..."
-        MODAL_COMMAND="python3 -m modal run modal/pr_test.py::run_ssim_tests"
+        MODAL_COMMAND="python3 -m modal run $MODAL_TEST_FILE::run_ssim_tests"
         ;;
     *)
         log "Error: Unknown test type: $TEST_TYPE"
