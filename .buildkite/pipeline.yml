@@ -1,4 +1,8 @@
 steps:
+  - block: "Start Build"
+    blocked_state: "running"
+    prompt: "Approve build?"
+
   - label: "Trigger Tests"
     command: |
       echo "Current working directory: $(pwd)"
