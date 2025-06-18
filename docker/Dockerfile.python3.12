@@ -62,7 +62,7 @@ RUN source $HOME/.local/bin/env && \
     git submodule update --init --recursive && \
     python setup_sta.py install
 
-# Install STA (Sliding Tile Attention)
+# Install VSA 
 RUN source $HOME/.local/bin/env && \
     source /opt/venv/bin/activate && \
     cd csrc/sliding_tile_attention/ && \
