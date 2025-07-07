@@ -31,9 +31,7 @@ log "Setting up Modal authentication from Buildkite secrets..."
 MODAL_TOKEN_ID=$(buildkite-agent secret get modal_token_id)
 MODAL_TOKEN_SECRET=$(buildkite-agent secret get modal_token_secret)
 
-WANDB_API_KEY=$(buildkite-agent secret get wandb_api_key)
-
-WANDB_API_KEY=$(buildkite-agent secret get wandb_api_key)
+# WANDB_API_KEY=$(buildkite-agent secret get wandb_api_key)
 
 if [ -n "$MODAL_TOKEN_ID" ] && [ -n "$MODAL_TOKEN_SECRET" ]; then
     log "Retrieved Modal credentials from Buildkite secrets"

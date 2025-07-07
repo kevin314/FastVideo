@@ -16,7 +16,7 @@ steps:
           diff: "git diff --name-only $BUILDKITE_PULL_REQUEST_BASE_BRANCH...HEAD"
           watch:
             - path: 
-                - "fastvideo/v1/models/encoders/**"
+                - "fastvideo/v1/models/encoders/**/*"
                 - "fastvideo/v1/models/loader/**"
                 - "fastvideo/v1/tests/encoders/**"
                 - "pyproject.toml"
