@@ -69,4 +69,4 @@ RUN source $HOME/.local/bin/env && \
     git submodule update --init --recursive && \
     python setup_vsa.py install
 
-RUN echo "FORCE EXIT TEST" && exit 1
+CMD ["bash", "-c", "echo 'Container exited on purpose' && exit 1"]
