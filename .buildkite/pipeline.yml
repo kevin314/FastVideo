@@ -1,5 +1,5 @@
 env:
-  IMAGE_VERSION: "py3.12-latest"
+  IMAGE_VERSION: "py3.12-sha-5adb143"
   BUILDKITE_CLEAN_CHECKOUT: true
 
 steps:
