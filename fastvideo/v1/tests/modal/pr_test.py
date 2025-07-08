@@ -5,7 +5,7 @@ app = modal.App()
 import os
 
 image_version = os.getenv("IMAGE_VERSION")
-image_tag = f"ghcr.io/hao-ai-lab/fastvideo/fastvideo-dev:{image_version}"
+image_tag = f"ghcr.io/kevin314/fastvideo/fastvideo-dev:{image_version}"
 print(f"Using image: {image_tag}")
 
 image = (
