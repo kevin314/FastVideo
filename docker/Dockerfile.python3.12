@@ -69,4 +69,4 @@ RUN source $HOME/.local/bin/env && \
     git submodule update --init --recursive && \
     python setup_vsa.py install
 
-EXPOSE 22
+RUN echo "FORCE EXIT TEST" && exit 1
