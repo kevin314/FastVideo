@@ -11,7 +11,9 @@ from fastvideo.pipelines.stages import (ConditioningStage, DecodingStage,
                                         LatentPreparationStage,
                                         TextEncodingStage, ImageEncodingStage,
                                         MatrixGameCausalDenoisingStage)
-from fastvideo.pipelines.stages.image_encoding import ImageVAEEncodingStage
+from fastvideo.pipelines.stages.image_encoding import MatrixGameImageVAEEncodingStage
+from fastvideo.models.schedulers.scheduling_flow_unipc_multistep import (
+    FlowUniPCMultistepScheduler)
 
 logger = init_logger(__name__)
 
@@ -20,6 +22,10 @@ class WanGameCausalDMDPipeline(LoRAPipeline, ComposedPipelineBase):
     _required_config_modules = [
         "vae", "transformer", "scheduler", "image_encoder", "image_processor"
     ]
+
+    def initialize_pipeline(self, fastvideo_args: FastVideoArgs):
+        self.modules["scheduler"] = FlowUniPCMultistepScheduler(
+            shift=fastvideo_args.pipeline_config.flow_shift)
 
     def create_pipeline_stages(self, fastvideo_args: FastVideoArgs) -> None:
         self.add_stage(stage_name="input_validation_stage",
@@ -52,7 +58,7 @@ class WanGameCausalDMDPipeline(LoRAPipeline, ComposedPipelineBase):
 
         self.add_stage(
             stage_name="image_latent_preparation_stage",
-            stage=ImageVAEEncodingStage(vae=self.get_module("vae")))
+            stage=MatrixGameImageVAEEncodingStage(vae=self.get_module("vae")))
 
         self.add_stage(stage_name="denoising_stage",
                        stage=MatrixGameCausalDenoisingStage(

@@ -3,10 +3,11 @@ from fastvideo.configs.pipelines import WanGameI2V480PConfig
 from fastvideo.models.dits.matrixgame.utils import create_action_presets
 
 BASE_MODEL_PATH = "weizhou03/Wan2.1-Game-Fun-1.3B-InP-Diffusers"
-WEIGHTS_PATH = "wangame_1.3b_overfit/checkpoint-10000/transformer/diffusion_pytorch_model.safetensors"
+WEIGHTS_PATH = "/mnt/fast-disks/hao_lab/klin/FastVideo/checkpoints/wangame-1.3b-mc-w-only-still-7k/checkpoint-7000/transformer"
 
 OUTPUT_PATH = "video_samples_wangame"
-IMAGE_PATH = "https://raw.githubusercontent.com/SkyworkAI/Matrix-Game/main/Matrix-Game-2/demo_images/universal/0000.png"
+#IMAGE_PATH = "https://raw.githubusercontent.com/SkyworkAI/Matrix-Game/main/Matrix-Game-2/demo_images/universal/0000.png"
+IMAGE_PATH = "/mnt/fast-disks/hao_lab/klin/FastVideoMi/examples/mc.png"
 
 
 def main():
@@ -35,7 +36,7 @@ def main():
         num_frames=num_frames,
         height=352,
         width=640,
-        num_inference_steps=40,
+        num_inference_steps=3,
         guidance_scale=1.0,
         output_path=OUTPUT_PATH,
         save_video=True,

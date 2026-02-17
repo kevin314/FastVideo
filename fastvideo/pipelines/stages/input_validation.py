@@ -114,7 +114,7 @@ class InputValidationStage(PipelineStage):
             ih, iw = img.height, img.width
 
             pipeline_class_name = type(fastvideo_args.pipeline_config).__name__
-            if 'MatrixGame' in pipeline_class_name or 'MatrixCausal' in pipeline_class_name:
+            if 'MatrixGame' in pipeline_class_name or 'MatrixCausal' in pipeline_class_name or 'WanGame' in pipeline_class_name:
                 oh, ow = batch.height, batch.width
                 img = img.resize((ow, oh), Image.LANCZOS)
             else:
@@ -137,6 +137,9 @@ class InputValidationStage(PipelineStage):
             assert img.width == ow and img.height == oh
             logger.info("final processed img height: %s, img width: %s",
                         img.height, img.width)
+
+            # Save original PIL image for CLIP encoding before converting to tensor
+            batch._pil_image_original = img.copy()
 
             # to tensor
             img = TF.to_tensor(img).sub_(0.5).div_(0.5).to(

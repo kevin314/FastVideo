@@ -211,9 +211,16 @@ class WanGameActionSelfAttention(nn.Module):
             cache_key = kv_cache.get("k", None)
             cache_value = kv_cache.get("v", None)
 
-            if cache_value is not None and not is_cache:
-                cache_key_rope, cache_key_prope = cache_key.chunk(2, dim=-1)
-                cache_value_rope, cache_value_prope = cache_value.chunk(2, dim=-1)
+            global_end_index = kv_cache.get("global_end_index", None)
+            cache_has_data = (global_end_index is not None and
+                              global_end_index.item() > 0)
+
+            if cache_value is not None and not is_cache and cache_has_data:
+                end_idx = global_end_index.item()
+                cache_key_valid = cache_key[:, :end_idx]
+                cache_value_valid = cache_value[:, :end_idx]
+                cache_key_rope, cache_key_prope = cache_key_valid.chunk(2, dim=-1)
+                cache_value_rope, cache_value_prope = cache_value_valid.chunk(2, dim=-1)
 
                 key_rope = torch.cat([cache_key_rope, key_rope], dim=1)
                 value_rope = torch.cat([cache_value_rope, value_rope], dim=1)
@@ -222,8 +229,20 @@ class WanGameActionSelfAttention(nn.Module):
 
             if is_cache:
                 # Store to cache (update input dict directly)
-                kv_cache["k"] = torch.cat([key_rope, key_prope], dim=-1)
-                kv_cache["v"] = torch.cat([value_rope, value_prope], dim=-1)
+                new_k = torch.cat([key_rope, key_prope], dim=-1)
+                new_v = torch.cat([value_rope, value_prope], dim=-1)
+                new_seq_len = new_k.shape[1]
+                # Write into pre-allocated cache buffer
+                if cache_has_data:
+                    end_idx = global_end_index.item()
+                    kv_cache["k"][:, end_idx:end_idx + new_seq_len] = new_k
+                    kv_cache["v"][:, end_idx:end_idx + new_seq_len] = new_v
+                    kv_cache["global_end_index"] = global_end_index + new_seq_len
+                else:
+                    kv_cache["k"][:, :new_seq_len] = new_k
+                    kv_cache["v"][:, :new_seq_len] = new_v
+                    kv_cache["global_end_index"] = torch.tensor(
+                        [new_seq_len], dtype=torch.long, device=new_k.device)
 
         # Concatenate rope and prope paths (matching original)
         query_all = torch.cat([query_rope, query_prope], dim=0)
@@ -233,7 +252,6 @@ class WanGameActionSelfAttention(nn.Module):
         # Check if Q and KV have different sequence lengths (KV cache mode)
         # In this case, use LocalAttention (supports different Q/KV lengths)
         if query_all.shape[1] != key_all.shape[1]:
-            raise ValueError("Q and KV have different sequence lengths")
             # KV cache mode: Q has new tokens only, KV has cached + new tokens
             # Use LocalAttention which supports different Q/KV lengths
             # LocalAttention will use the appropriate backend (SageAttn, FlashAttn, etc.)

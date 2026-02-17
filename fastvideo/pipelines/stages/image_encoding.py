@@ -68,7 +68,8 @@ class ImageEncodingStage(PipelineStage):
         """
         self.image_encoder = self.image_encoder.to(get_local_torch_device())
 
-        image = batch.pil_image
+        # Use saved PIL image if pil_image was converted to tensor (causal pipeline)
+        image = getattr(batch, '_pil_image_original', None) or batch.pil_image
 
         image_inputs = self.image_processor(
             images=image, return_tensors="pt").to(get_local_torch_device())
@@ -855,50 +856,39 @@ class MatrixGameImageVAEEncodingStage(ImageVAEEncodingStage):
         if isinstance(image, torch.Tensor):
             # Causal pipeline provides tensor in [B, C, F, H, W] format
             if image.dim() == 5:
-                # Already 5D, extract first frame for conditioning
-                # Shape: [B, C, F, H, W] -> use first frame [B, C, 1, H, W]
-                first_frame = image[:, :, :1]  # Keep dim, [B, C, 1, H, W]
-                # Create video condition with first frame + zeros
-                video_condition = torch.cat([
-                    first_frame,
-                    first_frame.new_zeros(
-                        first_frame.shape[0], first_frame.shape[1], num_frames -
-                        1, first_frame.shape[3], first_frame.shape[4])
-                ],
-                                            dim=2)
+                first_frame = image[:, :, :1]  # [B, C, 1, H, W]
             elif image.dim() == 4:
-                # [B, C, H, W] -> need to add frame dim
-                image = image.unsqueeze(2)  # [B, C, 1, H, W]
-                video_condition = torch.cat([
-                    image,
-                    image.new_zeros(image.shape[0], image.shape[1], num_frames -
-                                    1, image.shape[3], image.shape[4])
-                ],
-                                            dim=2)
+                first_frame = image.unsqueeze(2)  # [B, C, 1, H, W]
             else:
                 raise ValueError(f"Unexpected tensor dimensions: {image.dim()}")
-            video_condition = video_condition.to(get_local_torch_device(),
-                                                 dtype=torch.float32)
+            first_frame = first_frame.to(get_local_torch_device(),
+                                         dtype=torch.float32)
         else:
             # PIL Image input - use preprocess
-            image = self.preprocess(
+            first_frame = self.preprocess(
                 image,
                 vae_scale_factor=self.vae.spatial_compression_ratio,
                 height=height,
                 width=width).to(get_local_torch_device(), dtype=torch.float32)
+            first_frame = first_frame.unsqueeze(2)  # [B, C, 1, H, W]
 
-            # (B, C, H, W) -> (B, C, 1, H, W)
-            image = image.unsqueeze(2)
+        # Memory optimization: encode only a small chunk through the VAE instead
+        # of the full num_frames video. The video_condition is [first_frame, zeros...]
+        # so we only need to encode enough frames to cover the VAE's temporal
+        # receptive field. We then pad with zeros in latent space.
+        temporal_compression = getattr(self.vae, 'temporal_compression_ratio', 4)
+        # Encode just enough pixel frames to produce 2 latent frames
+        small_num_frames = temporal_compression + 1  # 5 pixel frames -> 2 latent frames
+        small_video = torch.cat([
+            first_frame,
+            first_frame.new_zeros(
+                first_frame.shape[0], first_frame.shape[1],
+                small_num_frames - 1, first_frame.shape[3],
+                first_frame.shape[4])
+        ], dim=2)
 
-            # Create video tensor with first frame as image, rest as zeros
-            video_condition = torch.cat([
-                image,
-                image.new_zeros(image.shape[0], image.shape[1], num_frames - 1,
-                                image.shape[3], image.shape[4])
-            ],
-                                        dim=2)
-            video_condition = video_condition.to(
-                device=get_local_torch_device(), dtype=torch.float32)
+        # Total latent frames needed
+        total_latent_frames = (num_frames - 1) // temporal_compression + 1
 
         # Setup VAE precision
         vae_dtype = PRECISION_TO_TYPE[
@@ -906,63 +896,68 @@ class MatrixGameImageVAEEncodingStage(ImageVAEEncodingStage):
         vae_autocast_enabled = (
             vae_dtype != torch.float32) and not fastvideo_args.disable_autocast
 
-        # Encode Image
+        # Encode only the small chunk
         with torch.autocast(device_type="cuda",
                             dtype=vae_dtype,
                             enabled=vae_autocast_enabled):
             if fastvideo_args.pipeline_config.vae_tiling:
                 self.vae.enable_tiling()
             if not vae_autocast_enabled:
-                video_condition = video_condition.to(vae_dtype)
-            encoder_output = self.vae.encode(video_condition)
+                small_video = small_video.to(vae_dtype)
+            encoder_output = self.vae.encode(small_video)
 
         # MatrixGame uses deterministic VAE encode for the first-frame conditioning.
-        # Sampling would inject random noise into the cond_concat tensor and destroy the action guidance.
-        img_cond = encoder_output.mode()
+        small_img_cond = encoder_output.mode()
 
         # manually using latents_mean and latents_std from config...
         if (hasattr(self.vae.config, 'latents_mean')
                 and hasattr(self.vae.config, 'latents_std')):
-            # Convert config values to tensors
             latents_mean = torch.tensor(self.vae.config.latents_mean,
-                                        device=img_cond.device,
-                                        dtype=img_cond.dtype).view(
+                                        device=small_img_cond.device,
+                                        dtype=small_img_cond.dtype).view(
                                             1, -1, 1, 1, 1)
-
             latents_std = torch.tensor(self.vae.config.latents_std,
-                                       device=img_cond.device,
-                                       dtype=img_cond.dtype).view(
+                                       device=small_img_cond.device,
+                                       dtype=small_img_cond.dtype).view(
                                            1, -1, 1, 1, 1)
-
-            # Apply normalization: (latent - mean) * (1/std)
-            img_cond = (img_cond - latents_mean) / latents_std
+            small_img_cond = (small_img_cond - latents_mean) / latents_std
         elif (hasattr(self.vae, "shift_factor")
               and self.vae.shift_factor is not None):
-            # Fallback to shift_factor/scaling_factor if available
             if isinstance(self.vae.shift_factor, torch.Tensor):
-                img_cond -= self.vae.shift_factor.to(img_cond.device,
-                                                     img_cond.dtype)
+                small_img_cond -= self.vae.shift_factor.to(
+                    small_img_cond.device, small_img_cond.dtype)
             else:
-                img_cond -= self.vae.shift_factor
-
+                small_img_cond -= self.vae.shift_factor
             if hasattr(self.vae, 'scaling_factor'):
                 if isinstance(self.vae.scaling_factor, torch.Tensor):
-                    img_cond = img_cond * self.vae.scaling_factor.to(
-                        img_cond.device, img_cond.dtype)
+                    small_img_cond = small_img_cond * self.vae.scaling_factor.to(
+                        small_img_cond.device, small_img_cond.dtype)
                 else:
-                    img_cond = img_cond * self.vae.scaling_factor
+                    small_img_cond = small_img_cond * self.vae.scaling_factor
+
+        # Pad to full latent temporal dimension with zeros
+        small_latent_frames = small_img_cond.shape[2]
+        if small_latent_frames < total_latent_frames:
+            pad_frames = total_latent_frames - small_latent_frames
+            img_cond = torch.cat([
+                small_img_cond,
+                small_img_cond.new_zeros(
+                    small_img_cond.shape[0], small_img_cond.shape[1],
+                    pad_frames, small_img_cond.shape[3],
+                    small_img_cond.shape[4])
+            ], dim=2)
+        else:
+            img_cond = small_img_cond[:, :, :total_latent_frames]
 
         # Create mask_cond: ones for first frame, zeros for rest
-        # Shape: (B, 16, latent_frames, latent_height, latent_width)
         mask_cond = torch.ones_like(img_cond)
-        mask_cond[:, :, 1:] = 0  # Set all frames except first to 0
+        mask_cond[:, :, 1:] = 0
 
         # Create cond_concat: first 4 channels of mask + all 16 channels of img_cond
         # Shape: (B, 20, latent_frames, latent_height, latent_width)
         cond_concat = torch.cat([mask_cond[:, :4], img_cond], dim=1)
 
         # Store cond_concat in batch.image_latent
-        # This will be concatenated with noise latents in DenoisingStage
         batch.image_latent = cond_concat
 
         # Offload models if needed

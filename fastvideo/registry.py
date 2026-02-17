@@ -563,6 +563,9 @@ def _register_configs() -> None:
         hf_model_paths=[
             "weizhou03/Wan2.1-Game-Fun-1.3B-InP-Diffusers",
         ],
+        model_detectors=[
+            lambda path: "wan2.1-game-fun-1.3b-inp" in path.lower(),
+        ],
     )
     # TODO: Need to add Lingbot
 

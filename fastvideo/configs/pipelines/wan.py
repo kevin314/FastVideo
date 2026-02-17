@@ -127,6 +127,10 @@ class WanGameI2V480PConfig(WanI2V480PConfig):
 
     dit_config: DiTConfig = field(default_factory=WanGameVideoConfig)
 
+    is_causal: bool = True
+    flow_shift: float | None = 5.0
+    num_frames_per_block: int = 3
+
 
 @dataclass
 class FastWan2_1_T2V_480P_Config(WanT2V480PConfig):
