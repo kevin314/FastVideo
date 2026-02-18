@@ -581,6 +581,7 @@ _DEFAULT_MATRIXGAME_CONFIG = MatrixGameWanVideoConfig()
 
 class CausalMatrixGameWanModel(BaseDiT):
     supports_action_input = True
+    _concatenates_image_latent = True  # Model handles image_latent internally via forward_context
 
     _fsdp_shard_conditions = _DEFAULT_MATRIXGAME_CONFIG._fsdp_shard_conditions
     _compile_conditions = _DEFAULT_MATRIXGAME_CONFIG._compile_conditions

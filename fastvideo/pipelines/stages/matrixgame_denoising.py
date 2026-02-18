@@ -521,7 +521,8 @@ class MatrixGameCausalDenoisingStage(DenoisingStage):
                 batch.image_latent.to(ctx.target_dtype)
             ],
                                            dim=2)
-        elif batch.image_latent is not None and not independent_first_frame:
+        elif (batch.image_latent is not None and not independent_first_frame
+              and not getattr(current_model, '_concatenates_image_latent', False)):
             # Slice image_latent to cover context + current frames
             img_start = start_index - context_num_frames
             img_end = start_index + current_num_frames
@@ -610,6 +611,39 @@ class MatrixGameCausalDenoisingStage(DenoisingStage):
                 )
                 model_kwargs.update(camera_action_kwargs)
 
+            # Log all model inputs for debugging
+            # if step_idx == 0:
+            #     _img_lat = batch.image_latent
+            #     logger.info(
+            #         "[DIAG-FORK] PRE-FORWARD step=%d: "
+            #         "latent_model_input shape=%s mean=%.6f std=%.6f, "
+            #         "prompt_embeds mean=%.6f std=%.6f, "
+            #         "t_for_model=%s, "
+            #         "image_latent shape=%s mean=%.6f std=%.6f, "
+            #         "image_kwargs keys=%s, "
+            #         "model_kwargs keys=%s, "
+            #         "kv_cache[0] k_mean=%.6f global_end=%d local_end=%d, "
+            #         "current_start=%s start_frame=%s, "
+            #         "model_class=%s",
+            #         step_idx,
+            #         list(latent_model_input.shape),
+            #         latent_model_input.float().mean().item(),
+            #         latent_model_input.float().std().item(),
+            #         prompt_embeds.float().mean().item() if torch.is_tensor(prompt_embeds) else 0,
+            #         prompt_embeds.float().std().item() if torch.is_tensor(prompt_embeds) else 0,
+            #         t_for_model.tolist() if t_for_model.numel() < 10 else f"shape={list(t_for_model.shape)}",
+            #         list(_img_lat.shape) if _img_lat is not None else None,
+            #         _img_lat.float().mean().item() if _img_lat is not None else 0,
+            #         _img_lat.float().std().item() if _img_lat is not None else 0,
+            #         list(ctx.image_kwargs.keys()),
+            #         list(model_kwargs.keys()),
+            #         model_kwargs["kv_cache"][0]["k"].float().mean().item(),
+            #         model_kwargs["kv_cache"][0]["global_end_index"].item(),
+            #         model_kwargs["kv_cache"][0]["local_end_index"].item(),
+            #         model_kwargs.get("current_start"),
+            #         model_kwargs.get("start_frame"),
+            #         type(current_model).__name__)
+
             pred_noise_btchw = current_model(
                 latent_model_input,
                 prompt_embeds,
@@ -618,6 +652,19 @@ class MatrixGameCausalDenoisingStage(DenoisingStage):
                 **ctx.pos_cond_kwargs,
                 **model_kwargs,
             ).permute(0, 2, 1, 3, 4)
+
+        logger.info(
+            "[DIAG-FORK] step=%d t=%s input_mean=%.6f input_std=%.6f "
+            "pred_mean=%.6f pred_std=%.6f noise_mean=%.6f noise_std=%.6f "
+            "block_start=%d nframes=%d",
+            step_idx, t_cur.item(),
+            latent_model_input.float().mean().item(),
+            latent_model_input.float().std().item(),
+            pred_noise_btchw.float().mean().item(),
+            pred_noise_btchw.float().std().item(),
+            noise_latents.float().mean().item(),
+            noise_latents.float().std().item(),
+            start_index, current_num_frames)
 
         if ctx.use_scheduler_step:
             # Slice to keep only current block's prediction (remove context frames)
@@ -664,6 +711,11 @@ class MatrixGameCausalDenoisingStage(DenoisingStage):
                     scheduler=self.scheduler).unflatten(
                         0, pred_noise_btchw.shape[:2])
 
+            logger.info(
+                "[DIAG-FORK] step=%d DMD_output: pred_video_mean=%.6f pred_video_std=%.6f",
+                step_idx, pred_video_btchw.float().mean().item(),
+                pred_video_btchw.float().std().item())
+
             if next_timestep is not None:
                 next_t = next_timestep * torch.ones(
                     [1], dtype=torch.long, device=pred_video_btchw.device)
@@ -701,6 +753,10 @@ class MatrixGameCausalDenoisingStage(DenoisingStage):
                 current_latents = pred_video_btchw.permute(0, 2, 1, 3, 4)
                 noise_latents_btchw = current_latents.permute(0, 2, 1, 3, 4)
 
+        logger.info(
+            "[DIAG-FORK] step=%d FINAL: output_mean=%.6f output_std=%.6f",
+            step_idx, current_latents.float().mean().item(),
+            current_latents.float().std().item())
         return current_latents, noise_latents_btchw
 
     def _process_single_block(
@@ -736,7 +792,8 @@ class MatrixGameCausalDenoisingStage(DenoisingStage):
                     batch.image_latent.to(ctx.target_dtype)
                 ],
                                                dim=2)
-            elif batch.image_latent is not None and not independent_first_frame:
+            elif (batch.image_latent is not None and not independent_first_frame
+                  and not getattr(current_model, '_concatenates_image_latent', False)):
                 # WanGame-style: concat image_latent along channel dim
                 # image_latent shape: [B, C_img, T_total, H, W] — slice to current block
                 img_lat = batch.image_latent[:, :, start_index:start_index +
@@ -931,7 +988,8 @@ class MatrixGameCausalDenoisingStage(DenoisingStage):
         # Concat image_latent for WanGame-style models (channel dim)
         independent_first_frame = getattr(self.transformer,
                                           'independent_first_frame', False)
-        if batch.image_latent is not None and not independent_first_frame:
+        if (batch.image_latent is not None and not independent_first_frame
+                and not getattr(self.transformer, '_concatenates_image_latent', False)):
             img_lat = batch.image_latent[:, :, start_index:start_index +
                                          current_num_frames, :, :]
             context_bcthw = torch.cat(
