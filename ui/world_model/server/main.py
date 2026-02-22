@@ -170,6 +170,7 @@ async def websocket_endpoint(websocket: WebSocket):
             block_count = 1
             await websocket.send_json({"type": "block_count", "count": block_count, "max": MAX_BLOCKS})
             await send_frames(websocket, frames)
+            await websocket.send_json({"type": "step_complete"})
             if timings:
                 print(f"[GPU {gpu_id}] Initial ({client_id[:8]}): model={timings.get('model_step_ms', 0):.0f}ms")
         except Exception as e:
@@ -195,6 +196,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     await websocket.send_json({"type": "block_count", "count": block_count, "max": MAX_BLOCKS})
                     await send_frames(websocket, frames)
                     await websocket.send_json({"type": "reset_complete"})
+                    await websocket.send_json({"type": "step_complete"})
                     print(f"[GPU {gpu_id}] Reset complete for {client_id[:8]}")
                 except Exception as e:
                     print(f"[GPU {gpu_id}] Reset error for {client_id[:8]}: {e}")
@@ -226,6 +228,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 if frames:
                     t_encode_start = time.time()
                     await send_frames(websocket, frames)
+                    await websocket.send_json({"type": "step_complete"})
                     t_encode = time.time() - t_encode_start
 
                     dit_ms = timings.get('dit_ms', 0)

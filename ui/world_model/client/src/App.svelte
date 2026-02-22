@@ -28,6 +28,10 @@
     right: false
   };
 
+  // Tracks whether a step is in flight. Only one key can be queued at a time,
+  // preventing stale buffered inputs from piling up when the model is slow.
+  let pendingStep = false;
+
   let availableModels = [];
   let selectedModelId = '';
 
@@ -114,6 +118,7 @@
 
   function leaveSession() {
     sessionStarted = false;
+    pendingStep = false;
     if (ws) {
       ws.close();
       ws = null;
@@ -269,12 +274,17 @@
         } else if (data.type === 'queue_status') {
           queuePosition = data.position;
           console.log(`Queue position: ${queuePosition}`);
+        } else if (data.type === 'step_complete') {
+          onStepComplete();
         } else if (data.type === 'gpu_assigned') {
           gpuAssigned = true;
           resetting = false;
           queuePosition = 0;
           sessionTimeout = data.session_timeout;
           timeLeft = data.session_timeout;
+          // Server begins generating the initial frame immediately after this.
+          // Mark a step as pending so user key presses don't race with it.
+          pendingStep = true;
           console.log(`GPU ${data.gpu_id} assigned, session timeout: ${sessionTimeout}s`);
 
           // Load initial image onto canvas with animation
@@ -337,13 +347,32 @@
   }
 
   function sendInput(key) {
-    if (ws && ws.readyState === WebSocket.OPEN) {
+    if (ws && ws.readyState === WebSocket.OPEN && !pendingStep) {
+      pendingStep = true;
       ws.send(JSON.stringify({ key }));
     }
   }
 
+  function sendHeldKey() {
+    if (blockCount >= maxBlocks) return;
+    if (pressedKeys.up)       { sendInput('w');         return; }
+    if (pressedKeys.down)     { sendInput('s');         return; }
+    if (pressedKeys.left)     { sendInput('a');         return; }
+    if (pressedKeys.right)    { sendInput('d');         return; }
+    if (pressedArrows.up)     { sendInput('ArrowUp');   return; }
+    if (pressedArrows.down)   { sendInput('ArrowDown'); return; }
+    if (pressedArrows.left)   { sendInput('ArrowLeft'); return; }
+    if (pressedArrows.right)  { sendInput('ArrowRight'); return; }
+  }
+
+  function onStepComplete() {
+    pendingStep = false;
+    sendHeldKey();
+  }
+
   function handleReset() {
     resetting = true;
+    pendingStep = false;
 
     // Close existing connection without triggering onclose handler
     if (ws) {
@@ -376,6 +405,10 @@
     const validKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd'];
     if (validKeys.includes(event.key)) {
       event.preventDefault();
+
+      // Ignore OS key-repeat events. Held keys are handled via sendHeldKey()
+      // after each step_complete, so we never buffer stale repeated inputs.
+      if (event.repeat) return;
 
       if (event.key === 'w') pressedKeys.up = true;
       if (event.key === 's') pressedKeys.down = true;
