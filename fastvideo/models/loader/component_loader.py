@@ -887,12 +887,16 @@ class SchedulerLoader(ComponentLoader):
 
     def load(self, model_path: str, fastvideo_args: FastVideoArgs):
         """Load the scheduler based on the model path, and inference args."""
-        config = get_diffusers_config(model=model_path)
-
-        class_name = config.pop("_class_name")
-        assert class_name is not None, (
-            "Model config does not contain a _class_name attribute. Only diffusers format is supported."
-        )
+        if fastvideo_args.override_scheduler_cls_name is not None:
+            class_name = fastvideo_args.override_scheduler_cls_name
+            config = fastvideo_args.override_scheduler_kwargs or {}
+            logger.info("Overriding scheduler cls_name to %s", class_name)
+        else:
+            config = get_diffusers_config(model=model_path)
+            class_name = config.pop("_class_name")
+            assert class_name is not None, (
+                "Model config does not contain a _class_name attribute. Only diffusers format is supported."
+            )
 
         scheduler_cls, _ = ModelRegistry.resolve_model_cls(class_name)
 

@@ -128,6 +128,10 @@ def gpu_worker_process(
             load_kwargs["override_transformer_cls_name"] = current_model_config["override_transformer_cls_name"]
         if current_model_config.get("override_pipeline_cls_name"):
             load_kwargs["override_pipeline_cls_name"] = current_model_config["override_pipeline_cls_name"]
+        if current_model_config.get("override_scheduler_cls_name"):
+            load_kwargs["override_scheduler_cls_name"] = current_model_config["override_scheduler_cls_name"]
+        if current_model_config.get("override_scheduler_kwargs"):
+            load_kwargs["override_scheduler_kwargs"] = current_model_config["override_scheduler_kwargs"]
 
         generator = StreamingVideoGenerator.from_pretrained(
             current_model_config["model_path"],
@@ -349,9 +353,10 @@ def gpu_worker_process(
                     cmd.user_id, batch, generator.fastvideo_args)
                 pending_results += 1
             elif cmd.type == CommandType.USER_STEP:
+                keyboard_dim = current_model_config["keyboard_dim"]
                 action = {
                     "keyboard": torch.tensor(
-                        cmd.data.get("keyboard", [0, 0, 0, 0])).cuda(),
+                        cmd.data.get("keyboard", [0] * keyboard_dim)).cuda(),
                     "mouse": torch.tensor(
                         cmd.data.get("mouse", [0, 0])).cuda()
                 }

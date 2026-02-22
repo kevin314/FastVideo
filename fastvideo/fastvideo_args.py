@@ -188,6 +188,8 @@ class FastVideoArgs:
     init_weights_from_safetensors_2: str = ""  # path to safetensors file for initial weight loading for transformer_2
 
     override_pipeline_cls_name: str | None = None
+    override_scheduler_cls_name: str | None = None
+    override_scheduler_kwargs: dict | None = None
 
     # # DMD parameters
     # dmd_denoising_steps: List[int] | None = field(default=None)

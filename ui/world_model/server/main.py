@@ -163,9 +163,10 @@ async def websocket_endpoint(websocket: WebSocket):
         block_count = 0
         await websocket.send_json({"type": "block_count", "count": block_count, "max": MAX_BLOCKS})
 
+        keyboard_dim = MODEL_REGISTRY[slot.current_model_id].get("keyboard_dim", 4)
         try:
             frames, timings = await slot.user_step(
-                client_id, [0, 0, 0, 0], [0, 0])
+                client_id, [0] * keyboard_dim, [0, 0])
             block_count = 1
             await websocket.send_json({"type": "block_count", "count": block_count, "max": MAX_BLOCKS})
             await send_frames(websocket, frames)
@@ -189,7 +190,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     await slot.join_user(client_id, model_id=model_id)
 
                     frames, timings = await slot.user_step(
-                        client_id, [0, 0, 0, 0], [0, 0])
+                        client_id, [0] * keyboard_dim, [0, 0])
                     block_count = 1
                     await websocket.send_json({"type": "block_count", "count": block_count, "max": MAX_BLOCKS})
                     await send_frames(websocket, frames)
@@ -204,10 +205,12 @@ async def websocket_endpoint(websocket: WebSocket):
             key = data.get("key")
             if key and block_count < MAX_BLOCKS:
                 if key in CAMERA_MAP:
-                    keyboard_vector = [0, 0, 0, 0]
+                    keyboard_vector = [0] * keyboard_dim
                     mouse_vector = CAMERA_MAP[key]
                 else:
-                    keyboard_vector = KEYBOARD_MAP.get(key, [0, 0, 0, 0])
+                    base_vec = KEYBOARD_MAP.get(key, [0] * keyboard_dim)
+                    # Pad to keyboard_dim if model uses more dims than KEYBOARD_MAP provides
+                    keyboard_vector = base_vec + [0] * max(0, keyboard_dim - len(base_vec))
                     mouse_vector = [0, 0]
 
                 print(f"[GPU {gpu_id}] Key '{key}' from {client_id[:8]}, generating block {block_count + 1}...")
