@@ -544,14 +544,9 @@ class MatrixGameCausalDenoisingStage(DenoisingStage):
             set_forward_context(current_timestep=step_idx,
                                 attn_metadata=attn_metadata,
                                 forward_batch=batch):
-            # Use per-frame timestep for causal models (e.g. MatrixGame),
-            # but scalar timestep for models with action modules (e.g. WanGame)
-            # that expand temb internally per-frame.
-            if ctx.use_scheduler_step:
-                # WanGame-style: pass [B] scalar timestep
+            if ctx.fastvideo_args.pipeline_config.scalar_timestep or ctx.use_scheduler_step:
                 t_for_model = t_cur.repeat(latent_model_input.shape[0])
             else:
-                # MatrixGame-style: pass [B, num_frames] per-frame timestep
                 t_for_model = t_cur * torch.ones(
                     (latent_model_input.shape[0], current_num_frames),
                     device=latent_model_input.device,
@@ -835,9 +830,7 @@ class MatrixGameCausalDenoisingStage(DenoisingStage):
                 set_forward_context(current_timestep=i,
                                     attn_metadata=attn_metadata,
                                     forward_batch=batch):
-                # Use per-frame timestep for causal models (e.g. MatrixGame),
-                # but scalar timestep for models with action modules (e.g. WanGame)
-                if ctx.use_scheduler_step:
+                if ctx.fastvideo_args.pipeline_config.scalar_timestep or ctx.use_scheduler_step:
                     t_expanded_noise = t_cur.repeat(latent_model_input.shape[0])
                 else:
                     t_expanded_noise = t_cur * torch.ones(
@@ -973,8 +966,7 @@ class MatrixGameCausalDenoisingStage(DenoisingStage):
         prompt_embeds = batch.prompt_embeds
         latents_device = current_latents.device
 
-        # Use per-frame timestep for causal models, scalar for WanGame-style
-        if ctx.use_scheduler_step:
+        if ctx.fastvideo_args.pipeline_config.scalar_timestep or ctx.use_scheduler_step:
             t_context = torch.ones([current_latents.shape[0]],
                                    device=latents_device,
                                    dtype=torch.long) * int(context_noise)

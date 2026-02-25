@@ -132,6 +132,8 @@ def gpu_worker_process(
             load_kwargs["override_scheduler_cls_name"] = current_model_config["override_scheduler_cls_name"]
         if current_model_config.get("override_scheduler_kwargs"):
             load_kwargs["override_scheduler_kwargs"] = current_model_config["override_scheduler_kwargs"]
+        if current_model_config.get("dmd_denoising_steps"):
+            load_kwargs["dmd_denoising_steps"] = current_model_config["dmd_denoising_steps"]
 
         generator = StreamingVideoGenerator.from_pretrained(
             current_model_config["model_path"],

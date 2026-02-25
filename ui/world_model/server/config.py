@@ -27,7 +27,6 @@ MODEL_REGISTRY = {
         "name": "WANGame 1.3B MC (W-Only, 7k)",
         "model_path": "weizhou03/Wan2.1-Game-Fun-1.3B-InP-Diffusers",
         "init_weights_from_safetensors": str(_REPO_ROOT / "checkpoints" / "wangame-1.3b-mc-w-only-still-7k" / "checkpoint-7000" / "transformer"),
-        "override_transformer_cls_name": "WanGameActionTransformer3DModel",
         "override_pipeline_cls_name": "WanGameCausalDMDPipeline",
         "keyboard_dim": 4,
         "image_url": "/server-assets/mc.png",
@@ -37,7 +36,6 @@ MODEL_REGISTRY = {
         "name": "WANGame 1.3B MC (WASD-Only, 2k)",
         "model_path": "weizhou03/Wan2.1-Game-Fun-1.3B-InP-Diffusers",
         "init_weights_from_safetensors": str(_REPO_ROOT / "checkpoints" / "wangame-1.3b-mc-wasd-only-2k" / "checkpoint-2000" / "transformer"),
-        "override_transformer_cls_name": "WanGameActionTransformer3DModel",
         "override_pipeline_cls_name": "WanGameCausalDMDPipeline",
         "keyboard_dim": 4,
         "image_url": "/server-assets/mc.png",
@@ -47,7 +45,6 @@ MODEL_REGISTRY = {
         "name": "WANGame 1.3B MC (WASD+Camera, 1k)",
         "model_path": "weizhou03/Wan2.1-Game-Fun-1.3B-InP-Diffusers",
         "init_weights_from_safetensors": str(_REPO_ROOT / "checkpoints" / "wangame-1.3b-mc-camera-1k" / "checkpoint-1000" / "transformer"),
-        "override_transformer_cls_name": "WanGameActionTransformer3DModel",
         "override_pipeline_cls_name": "WanGameCausalDMDPipeline",
         "keyboard_dim": 4,
         "image_url": "/server-assets/mc.png",
@@ -57,8 +54,19 @@ MODEL_REGISTRY = {
         "name": "WANGame 1.3B MC (Key+Camera Random 2-Action, 7k)",
         "model_path": "weizhou03/Wan2.1-Game-Fun-1.3B-InP-Diffusers",
         "init_weights_from_safetensors": str(_REPO_ROOT / "checkpoints" / "wangame-1.3b-mc-random-2actions-7k" / "checkpoint-7000" / "transformer"),
-        "override_transformer_cls_name": "WanGameActionTransformer3DModel",
         "override_pipeline_cls_name": "WanGameCausalDMDPipeline",
+        "keyboard_dim": 4,
+        "image_url": "/server-assets/mc.png",
+        "image_path": str(Path(__file__).resolve().parent / "mc.png"),
+    },
+    "wangame-ode-init-2500": {
+        "name": "WANGame ODE-Init MC (2.5k)",
+        "model_path": "weizhou03/Wan2.1-Game-Fun-1.3B-InP-Diffusers",
+        "init_weights_from_safetensors": str(_REPO_ROOT / "checkpoints" / "wangame-ode-init-2500" / "checkpoint-2500" / "transformer"),
+        "override_pipeline_cls_name": "WanGameCausalDMDPipeline",
+        "override_scheduler_cls_name": "SelfForcingFlowMatchScheduler",
+        "override_scheduler_kwargs": {"shift": 5.0, "sigma_min": 0.0, "extra_one_step": True, "num_inference_steps": 1000},
+        "dmd_denoising_steps": [1000, 750, 500, 250],
         "keyboard_dim": 4,
         "image_url": "/server-assets/mc.png",
         "image_path": str(Path(__file__).resolve().parent / "mc.png"),
@@ -67,7 +75,6 @@ MODEL_REGISTRY = {
         "name": "WANGame 1.3B MC (Key+Camera Random 1-Action, 9k)",
         "model_path": "weizhou03/Wan2.1-Game-Fun-1.3B-InP-Diffusers",
         "init_weights_from_safetensors": str(_REPO_ROOT / "checkpoints" / "wangame-1.3b-mc-random-1action-9k" / "checkpoint-9000" / "transformer"),
-        "override_transformer_cls_name": "WanGameActionTransformer3DModel",
         "override_pipeline_cls_name": "WanGameCausalDMDPipeline",
         "keyboard_dim": 4,
         "image_url": "/server-assets/mc.png",
@@ -77,8 +84,9 @@ MODEL_REGISTRY = {
 
 # DEFAULT_MODEL_ID = "matrix-game-2.0-base"
 # DEFAULT_MODEL_ID = "wangame-1.3b-mc-w-only-still-7k"
-# DEFAULT_MODEL_ID = "wangame-1.3b-mc-random-1action-9k"
+#DEFAULT_MODEL_ID = "wangame-1.3b-mc-random-1action-9k"
 DEFAULT_MODEL_ID = "matrixgame-ode-init-vizdoom-new-6k"
+# DEFAULT_MODEL_ID = "wangame-ode-init-2500"
 
 
 # Active model configuration (set by server or user selection)

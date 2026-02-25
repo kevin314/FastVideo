@@ -215,10 +215,12 @@ class WanGameActionSelfAttention(nn.Module):
             cache_has_data = (global_end_index is not None and
                               global_end_index.item() > 0)
 
+            local_end_index = kv_cache.get("local_end_index", None)
+
             if cache_value is not None and not is_cache and cache_has_data:
-                end_idx = global_end_index.item()
-                cache_key_valid = cache_key[:, :end_idx]
-                cache_value_valid = cache_value[:, :end_idx]
+                read_end = local_end_index.item() if local_end_index is not None else global_end_index.item()
+                cache_key_valid = cache_key[:, :read_end]
+                cache_value_valid = cache_value[:, :read_end]
                 cache_key_rope, cache_key_prope = cache_key_valid.chunk(2, dim=-1)
                 cache_value_rope, cache_value_prope = cache_value_valid.chunk(2, dim=-1)
 
@@ -228,21 +230,30 @@ class WanGameActionSelfAttention(nn.Module):
                 value_prope = torch.cat([cache_value_prope, value_prope], dim=1)
 
             if is_cache:
-                # Store to cache (update input dict directly)
                 new_k = torch.cat([key_rope, key_prope], dim=-1)
                 new_v = torch.cat([value_rope, value_prope], dim=-1)
                 new_seq_len = new_k.shape[1]
-                # Write into pre-allocated cache buffer
-                if cache_has_data:
-                    end_idx = global_end_index.item()
-                    kv_cache["k"][:, end_idx:end_idx + new_seq_len] = new_k
-                    kv_cache["v"][:, end_idx:end_idx + new_seq_len] = new_v
-                    kv_cache["global_end_index"] = global_end_index + new_seq_len
+                kv_cache_size = kv_cache["k"].shape[1]
+                local_end = local_end_index.item() if local_end_index is not None else 0
+
+                if local_end + new_seq_len > kv_cache_size:
+                    # Roll: evict oldest tokens to make room
+                    num_evicted = local_end + new_seq_len - kv_cache_size
+                    num_kept = local_end - num_evicted
+                    if num_kept > 0:
+                        kv_cache["k"][:, :num_kept] = kv_cache["k"][:, num_evicted:num_evicted + num_kept].clone()
+                        kv_cache["v"][:, :num_kept] = kv_cache["v"][:, num_evicted:num_evicted + num_kept].clone()
+                    local_start = max(0, num_kept)
                 else:
-                    kv_cache["k"][:, :new_seq_len] = new_k
-                    kv_cache["v"][:, :new_seq_len] = new_v
-                    kv_cache["global_end_index"] = torch.tensor(
-                        [new_seq_len], dtype=torch.long, device=new_k.device)
+                    local_start = local_end
+
+                local_end = local_start + new_seq_len
+                kv_cache["k"][:, local_start:local_end] = new_k
+                kv_cache["v"][:, local_start:local_end] = new_v
+                kv_cache["global_end_index"] = global_end_index + new_seq_len if cache_has_data else torch.tensor(
+                    [new_seq_len], dtype=torch.long, device=new_k.device)
+                if local_end_index is not None:
+                    local_end_index.fill_(local_end)
 
         # Concatenate rope and prope paths (matching original)
         query_all = torch.cat([query_rope, query_prope], dim=0)

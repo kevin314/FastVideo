@@ -370,6 +370,30 @@
     sendHeldKey();
   }
 
+  function handleButtonDown(e, key) {
+    e.preventDefault();
+    if (key === 'w') pressedKeys = { ...pressedKeys, up: true };
+    else if (key === 's') pressedKeys = { ...pressedKeys, down: true };
+    else if (key === 'a') pressedKeys = { ...pressedKeys, left: true };
+    else if (key === 'd') pressedKeys = { ...pressedKeys, right: true };
+    else if (key === 'ArrowUp') pressedArrows = { ...pressedArrows, up: true };
+    else if (key === 'ArrowDown') pressedArrows = { ...pressedArrows, down: true };
+    else if (key === 'ArrowLeft') pressedArrows = { ...pressedArrows, left: true };
+    else if (key === 'ArrowRight') pressedArrows = { ...pressedArrows, right: true };
+    sendInput(key);
+  }
+
+  function handleButtonUp(key) {
+    if (key === 'w') pressedKeys = { ...pressedKeys, up: false };
+    else if (key === 's') pressedKeys = { ...pressedKeys, down: false };
+    else if (key === 'a') pressedKeys = { ...pressedKeys, left: false };
+    else if (key === 'd') pressedKeys = { ...pressedKeys, right: false };
+    else if (key === 'ArrowUp') pressedArrows = { ...pressedArrows, up: false };
+    else if (key === 'ArrowDown') pressedArrows = { ...pressedArrows, down: false };
+    else if (key === 'ArrowLeft') pressedArrows = { ...pressedArrows, left: false };
+    else if (key === 'ArrowRight') pressedArrows = { ...pressedArrows, right: false };
+  }
+
   function handleReset() {
     resetting = true;
     pendingStep = false;
@@ -511,17 +535,6 @@
   </details>
 
   <div class="header-section">
-    <div class="model-selector">
-      {#if availableModels.length > 0}
-        <select bind:value={selectedModelId} disabled={sessionStarted}>
-          {#each availableModels as model}
-            <option value={model.id}>{model.name}</option>
-          {/each}
-        </select>
-      {:else}
-        <h2>Loading...</h2>
-      {/if}
-    </div>
     <div class="status">
       {#if connected && gpuAssigned && timeLeft !== null}
         <span class="time-left" class:warning={timeLeft <= 30}>
@@ -529,27 +542,44 @@
         </span>
       {:else if sessionStarted && queuePosition > 0}
         <span class="status-queue">Queue position: {queuePosition}</span>
-      {:else if sessionStarted && (connecting || resetting)}
+      {:else if sessionStarted && resetting}
+        <span class="status-connecting">Resetting...</span>
+      {:else if sessionStarted && connecting}
         <span class="status-connecting">Connecting...</span>
+      {:else if connected && !gpuAssigned && queuePosition === 0}
+        <span class="status-connecting">Loading model...</span>
       {/if}
     </div>
-    <div class="header-buttons">
-      {#if !sessionStarted}
-        <button class="join-btn" on:click={joinSession}>
-          Join Session
-        </button>
-      {:else}
-        <button class="reset-btn" on:click={handleReset} disabled={!connected || !gpuAssigned || resetting}>
-          {#if resetting}
-            <span class="spinner">⟳</span> Resetting...
-          {:else}
-            Reset
-          {/if}
-        </button>
-        <button class="leave-btn" on:click={leaveSession} disabled={resetting}>
-          Leave
-        </button>
-      {/if}
+    <div class="controls-row">
+      <div class="model-selector">
+        {#if availableModels.length > 0}
+          <select bind:value={selectedModelId} disabled={sessionStarted}>
+            {#each availableModels as model}
+              <option value={model.id}>{model.name}</option>
+            {/each}
+          </select>
+        {:else}
+          <h2>Loading...</h2>
+        {/if}
+      </div>
+      <div class="header-buttons">
+        {#if !sessionStarted}
+          <button class="join-btn" on:click={joinSession}>
+            Join Session
+          </button>
+        {:else}
+          <button class="reset-btn" on:click={handleReset} disabled={!connected || !gpuAssigned || resetting}>
+            {#if resetting}
+              <span class="spinner">⟳</span> Resetting...
+            {:else}
+              Reset
+            {/if}
+          </button>
+          <button class="leave-btn" on:click={leaveSession} disabled={resetting}>
+            Leave
+          </button>
+        {/if}
+      </div>
     </div>
   </div>
 
@@ -602,22 +632,46 @@
     <div class="key-overlay key-overlay-left">
       <div class="key-grid">
         <div class="key-spacer"></div>
-        <div class="key {pressedKeys.up ? 'pressed' : ''}">W</div>
+        <div class="key {pressedKeys.up ? 'pressed' : ''}"
+          on:pointerdown={(e) => handleButtonDown(e, 'w')}
+          on:pointerup={() => handleButtonUp('w')}
+          on:pointerleave={() => handleButtonUp('w')}>W</div>
         <div class="key-spacer"></div>
-        <div class="key {pressedKeys.left ? 'pressed' : ''}">A</div>
-        <div class="key {pressedKeys.down ? 'pressed' : ''}">S</div>
-        <div class="key {pressedKeys.right ? 'pressed' : ''}">D</div>
+        <div class="key {pressedKeys.left ? 'pressed' : ''}"
+          on:pointerdown={(e) => handleButtonDown(e, 'a')}
+          on:pointerup={() => handleButtonUp('a')}
+          on:pointerleave={() => handleButtonUp('a')}>A</div>
+        <div class="key {pressedKeys.down ? 'pressed' : ''}"
+          on:pointerdown={(e) => handleButtonDown(e, 's')}
+          on:pointerup={() => handleButtonUp('s')}
+          on:pointerleave={() => handleButtonUp('s')}>S</div>
+        <div class="key {pressedKeys.right ? 'pressed' : ''}"
+          on:pointerdown={(e) => handleButtonDown(e, 'd')}
+          on:pointerup={() => handleButtonUp('d')}
+          on:pointerleave={() => handleButtonUp('d')}>D</div>
       </div>
     </div>
 
     <div class="key-overlay key-overlay-right">
       <div class="key-grid">
         <div class="key-spacer"></div>
-        <div class="key {pressedArrows.up ? 'pressed' : ''}">▲</div>
+        <div class="key {pressedArrows.up ? 'pressed' : ''}"
+          on:pointerdown={(e) => handleButtonDown(e, 'ArrowUp')}
+          on:pointerup={() => handleButtonUp('ArrowUp')}
+          on:pointerleave={() => handleButtonUp('ArrowUp')}>▲</div>
         <div class="key-spacer"></div>
-        <div class="key {pressedArrows.left ? 'pressed' : ''}">◀</div>
-        <div class="key {pressedArrows.down ? 'pressed' : ''}">▼</div>
-        <div class="key {pressedArrows.right ? 'pressed' : ''}">▶</div>
+        <div class="key {pressedArrows.left ? 'pressed' : ''}"
+          on:pointerdown={(e) => handleButtonDown(e, 'ArrowLeft')}
+          on:pointerup={() => handleButtonUp('ArrowLeft')}
+          on:pointerleave={() => handleButtonUp('ArrowLeft')}>◀</div>
+        <div class="key {pressedArrows.down ? 'pressed' : ''}"
+          on:pointerdown={(e) => handleButtonDown(e, 'ArrowDown')}
+          on:pointerup={() => handleButtonUp('ArrowDown')}
+          on:pointerleave={() => handleButtonUp('ArrowDown')}>▼</div>
+        <div class="key {pressedArrows.right ? 'pressed' : ''}"
+          on:pointerdown={(e) => handleButtonDown(e, 'ArrowRight')}
+          on:pointerup={() => handleButtonUp('ArrowRight')}
+          on:pointerleave={() => handleButtonUp('ArrowRight')}>▶</div>
       </div>
     </div>
   </div>
@@ -746,17 +800,24 @@
   }
 
   .header-section {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    display: flex;
+    flex-direction: column;
     align-items: center;
+    gap: 0.4rem;
     width: 100%;
     max-width: 672px;
     margin-top: 2rem;
     margin-bottom: 0.5rem;
   }
 
+  .controls-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+
   .model-selector {
-    justify-self: start;
   }
 
   .model-selector select {
@@ -782,10 +843,6 @@
 
   .header-section h2 {
     justify-self: start;
-  }
-
-  .header-section .status {
-    justify-self: center;
   }
 
   .header-buttons {
@@ -996,7 +1053,6 @@
   .key-overlay {
     position: absolute;
     bottom: 16px;
-    pointer-events: none;
   }
 
   .key-overlay-left {
@@ -1031,6 +1087,9 @@
     font-size: 20px;
     transition: all 0.1s ease;
     backdrop-filter: blur(4px);
+    cursor: pointer;
+    user-select: none;
+    touch-action: none;
   }
 
   .key.pressed {

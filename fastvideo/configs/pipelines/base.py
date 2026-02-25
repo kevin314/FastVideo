@@ -89,6 +89,10 @@ class PipelineConfig:
     # DMD parameters
     dmd_denoising_steps: list[int] | None = field(default=None)
 
+    # Whether the transformer expects a scalar [B] timestep (model expands per-frame internally)
+    # vs an explicit [B, num_frames] per-frame timestep. Default False (MatrixGame-style).
+    scalar_timestep: bool = False
+
     # Wan2.2 TI2V parameters
     ti2v_task: bool = False
     boundary_ratio: float | None = None

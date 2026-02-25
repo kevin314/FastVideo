@@ -130,6 +130,7 @@ class WanGameI2V480PConfig(WanI2V480PConfig):
     is_causal: bool = True
     flow_shift: float | None = 5.0
     num_frames_per_block: int = 3
+    scalar_timestep: bool = True  # WanGame expands timestep per-frame internally
 
 
 @dataclass
