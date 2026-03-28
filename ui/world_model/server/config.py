@@ -71,6 +71,26 @@ MODEL_REGISTRY = {
         "image_url": "/server-assets/mc.png",
         "image_path": str(Path(__file__).resolve().parent / "mc.png"),
     },
+    "matrixgame-sf": {
+        "name": "MatrixGame SF MC (1.2k)",
+        "model_path": "FastVideo/Matrix-Game-2.0-Foundation-Diffusers",
+        "init_weights_from_safetensors": str(_REPO_ROOT / "checkpoints" / "matrixgame-sf" / "checkpoint-1200" / "transformer"),
+        "override_transformer_cls_name": "CausalMatrixGameWanModel",
+        "override_pipeline_cls_name": "MatrixGameCausalDMDPipeline",
+        "override_scheduler_cls_name": "SelfForcingFlowMatchScheduler",
+        "override_scheduler_kwargs": {"shift": 5.0, "sigma_min": 0.0, "extra_one_step": True, "num_inference_steps": 1000},
+        "override_transformer_kwargs": {"action_config": {"keyboard_dim_in": 23}},
+        "keyboard_dim": 23,
+        "keyboard_map": {
+            # indices match SOLARIS_MOVEMENT_KEY_INDICES: forward=11, back=12, left=13, right=14
+            "w": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "s": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "a": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "d": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+        },
+        "image_url": "/server-assets/mc.png",
+        "image_path": str(Path(__file__).resolve().parent / "mc.png"),
+    },
     "wangame-1.3b-mc-random-1action-9k": {
         "name": "WANGame 1.3B MC (Key+Camera Random 1-Action, 9k)",
         "model_path": "weizhou03/Wan2.1-Game-Fun-1.3B-InP-Diffusers",
@@ -84,9 +104,10 @@ MODEL_REGISTRY = {
 
 # DEFAULT_MODEL_ID = "matrix-game-2.0-base"
 # DEFAULT_MODEL_ID = "wangame-1.3b-mc-w-only-still-7k"
-#DEFAULT_MODEL_ID = "wangame-1.3b-mc-random-1action-9k"
-DEFAULT_MODEL_ID = "matrixgame-ode-init-vizdoom-new-6k"
+# DEFAULT_MODEL_ID = "wangame-1.3b-mc-random-1action-9k"
+# DEFAULT_MODEL_ID = "matrixgame-ode-init-vizdoom-new-6k"
 # DEFAULT_MODEL_ID = "wangame-ode-init-2500"
+DEFAULT_MODEL_ID = "matrixgame-sf"
 
 
 # Active model configuration (set by server or user selection)

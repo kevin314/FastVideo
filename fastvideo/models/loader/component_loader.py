@@ -769,6 +769,13 @@ class TransformerLoader(ComponentLoader):
         # Config from Diffusers supersedes fastvideo's model config
         dit_config = deepcopy(fastvideo_args.pipeline_config.dit_config)
         dit_config.update_model_arch(config)
+        if fastvideo_args.override_transformer_kwargs:
+            for key, value in fastvideo_args.override_transformer_kwargs.items():
+                existing = getattr(dit_config.arch_config, key, None)
+                if isinstance(existing, dict) and isinstance(value, dict):
+                    setattr(dit_config.arch_config, key, {**existing, **value})
+                else:
+                    dit_config.update_model_arch({key: value})
 
         model_cls, _ = ModelRegistry.resolve_model_cls(cls_name)
 

@@ -67,7 +67,7 @@ def gpu_worker_process(
     """
     # Set CUDA_VISIBLE_DEVICES BEFORE importing torch or any CUDA code
     os.environ["CUDA_VISIBLE_DEVICES"] = cuda_device
-    os.environ["FASTVIDEO_ATTENTION_BACKEND"] = "FLASH_ATTN"
+    os.environ["FASTVIDEO_ATTENTION_BACKEND"] = os.environ.get("FASTVIDEO_ATTENTION_BACKEND", "FLASH_ATTN")
 
     # Now import the generator (this will initialize CUDA with the single visible GPU)
     from fastvideo.entrypoints.streaming_generator import StreamingVideoGenerator
@@ -126,6 +126,8 @@ def gpu_worker_process(
             load_kwargs["init_weights_from_safetensors"] = current_model_config["init_weights_from_safetensors"]
         if current_model_config.get("override_transformer_cls_name"):
             load_kwargs["override_transformer_cls_name"] = current_model_config["override_transformer_cls_name"]
+        if current_model_config.get("override_transformer_kwargs"):
+            load_kwargs["override_transformer_kwargs"] = current_model_config["override_transformer_kwargs"]
         if current_model_config.get("override_pipeline_cls_name"):
             load_kwargs["override_pipeline_cls_name"] = current_model_config["override_pipeline_cls_name"]
         if current_model_config.get("override_scheduler_cls_name"):

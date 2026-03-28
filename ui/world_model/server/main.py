@@ -163,7 +163,9 @@ async def websocket_endpoint(websocket: WebSocket):
         block_count = 0
         await websocket.send_json({"type": "block_count", "count": block_count, "max": MAX_BLOCKS})
 
-        keyboard_dim = MODEL_REGISTRY[slot.current_model_id].get("keyboard_dim", 4)
+        current_model_config = MODEL_REGISTRY[slot.current_model_id]
+        keyboard_dim = current_model_config.get("keyboard_dim", 4)
+        model_keyboard_map = current_model_config.get("keyboard_map", KEYBOARD_MAP)
         try:
             frames, timings = await slot.user_step(
                 client_id, [0] * keyboard_dim, [0, 0])
@@ -210,12 +212,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     keyboard_vector = [0] * keyboard_dim
                     mouse_vector = CAMERA_MAP[key]
                 else:
-                    base_vec = KEYBOARD_MAP.get(key, [0] * keyboard_dim)
-                    # Pad to keyboard_dim if model uses more dims than KEYBOARD_MAP provides
+                    base_vec = model_keyboard_map.get(key, [0] * keyboard_dim)
                     keyboard_vector = base_vec + [0] * max(0, keyboard_dim - len(base_vec))
                     mouse_vector = [0, 0]
 
-                print(f"[GPU {gpu_id}] Key '{key}' from {client_id[:8]}, generating block {block_count + 1}...")
+                nonzero = [i for i, v in enumerate(keyboard_vector) if v != 0]
+                print(f"[GPU {gpu_id}] Key '{key}' from {client_id[:8]}, keyboard nonzero indices: {nonzero}, generating block {block_count + 1}...")
 
                 t_start = time.time()
                 frames, timings = await slot.user_step(

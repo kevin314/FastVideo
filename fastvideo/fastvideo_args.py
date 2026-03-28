@@ -184,6 +184,7 @@ class FastVideoArgs:
     override_text_encoder_quant: QuantizationMethods = None
 
     override_transformer_cls_name: str | None = None
+    override_transformer_kwargs: dict | None = None
     init_weights_from_safetensors: str = ""  # path to safetensors file for initial weight loading
     init_weights_from_safetensors_2: str = ""  # path to safetensors file for initial weight loading for transformer_2
 
