@@ -82,11 +82,30 @@ MODEL_REGISTRY = {
         "override_transformer_kwargs": {"action_config": {"keyboard_dim_in": 23}},
         "keyboard_dim": 23,
         "keyboard_map": {
-            # indices match SOLARIS_MOVEMENT_KEY_INDICES: forward=11, back=12, left=13, right=14
-            "w": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            "s": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            "a": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            "d": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+            # ACTION_ORDER: inventory,ESC,hotbar.1-9,forward,back,left,right,jump,sneak,sprint,swapHands,attack,use,pickItem,drop
+            "e":       [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # inventory
+            "Escape":  [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # ESC
+            "1":       [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # hotbar.1
+            "2":       [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # hotbar.2
+            "3":       [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # hotbar.3
+            "4":       [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # hotbar.4
+            "5":       [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # hotbar.5
+            "6":       [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # hotbar.6
+            "7":       [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # hotbar.7
+            "8":       [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # hotbar.8
+            "9":       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # hotbar.9
+            "w":       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # forward
+            "s":       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # back
+            "a":       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # left
+            "d":       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],  # right
+            " ":       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],  # jump
+            "Shift":   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],  # sneak
+            "Control": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],  # sprint
+            "f":       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],  # swapHands
+            "q":       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],  # attack
+            "r":       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],  # use
+            "z":       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],  # pickItem
+            "g":       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],  # drop
         },
         "image_url": "/server-assets/mc.png",
         "image_path": str(Path(__file__).resolve().parent / "mc.png"),
@@ -124,10 +143,10 @@ KEYBOARD_MAP = {
 # Camera mappings (Arrow keys)
 CAM_VALUE = 0.1
 CAMERA_MAP = {
-    "ArrowUp": [CAM_VALUE, 0],
-    "ArrowDown": [-CAM_VALUE, 0],
-    "ArrowLeft": [0, -CAM_VALUE],
-    "ArrowRight": [0, CAM_VALUE],
+    "ArrowUp": [0, CAM_VALUE],
+    "ArrowDown": [0, -CAM_VALUE],
+    "ArrowLeft": [CAM_VALUE, 0],
+    "ArrowRight": [-CAM_VALUE, 0],
 }
 
 # Generation limits
@@ -140,6 +159,6 @@ DISABLE_BATCHING = False  # Process users sequentially (batch_size=1) instead of
 NUM_FRAMES = 597
 FRAME_HEIGHT = 352
 FRAME_WIDTH = 640
-NUM_INFERENCE_STEPS = 10
+NUM_INFERENCE_STEPS = 3
 JPEG_QUALITY = 100
 BATCH_SIZE = 12

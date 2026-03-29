@@ -426,7 +426,7 @@
   }
 
   function handleKeyDown(event) {
-    const validKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd'];
+    const validKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd', 'e', 'Escape', '1', '2', '3', '4', '5', '6', '7', '8', '9', ' ', 'Shift', 'Control', 'f', 'q', 'r', 'z', 'g'];
     if (validKeys.includes(event.key)) {
       event.preventDefault();
 
